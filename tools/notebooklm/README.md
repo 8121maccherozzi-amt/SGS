@@ -61,7 +61,49 @@ rifiutato con `Missing required cookies: SID`. Lo script diagnostica
 esplicitamente questo caso. La riga `cookie:` presa dagli header di
 richiesta li contiene sempre tutti.
 
-Per generare il JSON dal tuo browser con la libreria:
+### Scadenza del payload
+
+`__Secure-1PSIDTS` ruota ogni pochi minuti: qualunque sia il metodo di
+estrazione, il payload va usato **subito**. Un ritardo tra copia dei cookie e
+lancio dello script produce l'errore `Authentication expired or invalid` con
+redirect ad `accounts.google.com`, anche a fronte di un elenco di cookie
+completo e formalmente corretto. Se lo script gira su Claude Code remoto o su
+CI, considera che al tempo di copia si somma quello di aggiornare la variabile
+d'ambiente e avviare una nuova sessione: e' il motivo principale per cui
+l'esecuzione in locale e' piu' affidabile.
+
+### Estrazione con l'estensione Cookie-Editor
+
+L'export JSON di Cookie-Editor (e di estensioni equivalenti come
+EditThisCookie) e' riconosciuto direttamente da `cookie_to_auth.py`: domini,
+`sameSite` non standard (`unspecified`, `no_restriction`) e campi extra
+dell'estensione vengono normalizzati senza interventi manuali.
+
+| # | Passo |
+|---|---|
+| 1 | Apri **`notebooklm.google.com`**, loggato con l'account giusto |
+| 2 | Icona di Cookie-Editor -> **Export** -> **Export as JSON** (copia negli appunti) |
+| 3 | Incolla il JSON come valore di `NOTEBOOKLM_AUTH_JSON`, oppure salvalo in `cookie.txt` |
+| 4 | Lancia `bash tools/notebooklm/run_export.sh` |
+
+Due condizioni **obbligatorie**, entrambe causa di payload che superano la
+validazione ma vengono poi rifiutati da Google:
+
+- **Esporta dalla scheda `notebooklm.google.com`**, non da una pagina Google
+  generica: `OSID` e `__Secure-OSID` sono host-scoped su quel dominio e da
+  altrove l'estensione non li vede.
+- **Non attivare filtri "solo cookie secure"**: `SID`, `HSID`, `APISID` e
+  `LSID` non hanno il flag `Secure` e verrebbero esclusi in silenzio (vedi
+  l'avvertenza sugli export parziali qui sopra).
+
+⚠️ Un'estensione di questo tipo ha accesso in lettura a **tutti** i cookie di
+sessione dell'account Google, ed e' una categoria storicamente bersaglio di
+attacchi di supply chain (acquisizione dell'estensione seguita da update
+malevolo). Se l'account e' aziendale, valuta il rischio prima di installarla:
+il metodo qui sotto ottiene lo stesso risultato senza aggiungere estensioni al
+browser.
+
+### Estrazione con la libreria (profilo Chrome locale)
 
 ```bash
 pip install "notebooklm-py[browser]"
