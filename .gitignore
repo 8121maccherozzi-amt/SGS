@@ -1,0 +1,16 @@
+# Segreti e credenziali - non committare mai
+.env
+*.env
+storage_state*.json
+*.auth.json
+NOTEBOOKLM_AUTH_JSON*
+
+# Export locali del connettore NotebookLM
+notebooklm_export/
+tools/notebooklm/*export*/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
