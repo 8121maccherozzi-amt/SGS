@@ -34,24 +34,34 @@ esportala prima di lanciare lo script:
 export NOTEBOOKLM_AUTH_JSON="$(cat storage_state.json)"
 ```
 
-Formato atteso (JSON, generato da `notebooklm login` con i cookie del
-browser sulla pagina di Gemini Notebook, oppure copiato manualmente):
+### Formati accettati
 
-```json
-{
-  "cookies": [
-    { "name": "SID", "value": "...", "domain": ".google.com" },
-    { "name": "__Secure-1PSIDTS", "value": "..." }
-  ],
-  "origins": [],
-  "notebooklm": { "version": 1, "account": { "authuser": 0, "email": "tu@example.com" } }
-}
-```
+`cookie_to_auth.py` riconosce automaticamente tre formati di input e li
+normalizza nello `storage_state` atteso dalla libreria:
+
+| Formato | Esempio |
+|---|---|
+| Riga di header HTTP `Cookie:` | `cookie: SID=...; HSID=...; SAPISID=...` |
+| Array JSON da estensione browser | `[{"name": "SID", "value": "...", "domain": ".google.com"}, ...]` |
+| `storage_state` già pronto | `{"cookies": [...], "origins": []}` |
+
+Il dominio `notebook.google.com` viene ricondotto a `notebooklm.google.com`,
+e i valori `sameSite` non standard (es. `no_restriction`) sono normalizzati.
+
+### Cookie obbligatori
 
 I cookie **`SID`** e **`__Secure-1PSIDTS`** sono obbligatori; almeno uno tra
 `OSID` oppure la coppia `APISID`+`SAPISID`+`LSID` è fortemente consigliato.
 
-Per generare questo JSON dal tuo browser, il modo più semplice è:
+⚠️ **Attenzione agli export parziali.** `SID`, `HSID`, `APISID` e `LSID` non
+hanno il flag `Secure`: le estensioni con filtro "solo cookie secure" e le
+letture parziali del profilo Chrome 127+ (App-Bound Encryption) li perdono
+silenziosamente, producendo un payload che sembra completo ma viene
+rifiutato con `Missing required cookies: SID`. Lo script diagnostica
+esplicitamente questo caso. La riga `cookie:` presa dagli header di
+richiesta li contiene sempre tutti.
+
+Per generare il JSON dal tuo browser con la libreria:
 
 ```bash
 pip install "notebooklm-py[browser]"
@@ -63,17 +73,21 @@ cat ~/.notebooklm/profiles/default/storage_state.json   # contenuto da usare com
 
 ### Flusso completo in un comando
 
-Se hai i cookie del browser (senza Python installato in locale non puoi usare
-`notebooklm login`), salva la riga `cookie:` in un file `cookie.txt` nella
-radice del repo e lancia:
-
 ```bash
 bash tools/notebooklm/run_export.sh
 # oppure: bash tools/notebooklm/run_export.sh percorso/cookie.txt cartella_output
 ```
 
-Lo script converte i cookie, verifica l'autenticazione ed esegue l'export.
-`cookie.txt` e la cartella di export sono esclusi da git.
+Lo script prende i cookie, in ordine, da:
+
+1. il file passato come primo argomento (default `cookie.txt` nella radice del repo);
+2. la variabile d'ambiente `NOTEBOOKLM_AUTH_JSON`, se quel file non esiste.
+
+Il secondo caso è quello utile su CI o su Claude Code remoto, dove non si
+possono depositare file locali: basta impostare la variabile nella
+configurazione dell'ambiente. Poi lo script normalizza i cookie, verifica
+l'autenticazione ed esegue l'export. `cookie.txt` e la cartella di export
+sono esclusi da git.
 
 **Come ottenere la riga `cookie:`**: su `notebooklm.google.com` (loggato con
 l'account giusto) premi F12 → scheda **Network** → F5 per ricaricare → clic
