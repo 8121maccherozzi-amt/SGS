@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bash tools/notebooklm/run_export.sh)",
+      "Bash(bash tools/notebooklm/run_export.sh *)",
+      "Bash(notebooklm *)",
+      "Bash(pip install *)",
+      "Bash(python3 tools/notebooklm/*)"
+    ]
+  }
+}
