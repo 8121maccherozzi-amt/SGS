@@ -61,6 +61,28 @@ cat ~/.notebooklm/profiles/default/storage_state.json   # contenuto da usare com
 
 ## Uso
 
+### Flusso completo in un comando
+
+Se hai i cookie del browser (senza Python installato in locale non puoi usare
+`notebooklm login`), salva la riga `cookie:` in un file `cookie.txt` nella
+radice del repo e lancia:
+
+```bash
+bash tools/notebooklm/run_export.sh
+# oppure: bash tools/notebooklm/run_export.sh percorso/cookie.txt cartella_output
+```
+
+Lo script converte i cookie, verifica l'autenticazione ed esegue l'export.
+`cookie.txt` e la cartella di export sono esclusi da git.
+
+**Come ottenere la riga `cookie:`**: su `notebooklm.google.com` (loggato con
+l'account giusto) premi F12 → scheda **Network** → F5 per ricaricare → clic
+sulla prima richiesta a `notebooklm.google.com` → **Headers** → **Request
+Headers** → tasto destro sul valore di `cookie:` → *Copy value*. Il cookie
+`__Secure-1PSIDTS` ruota spesso: usa una copia fresca.
+
+### Solo l'export (autenticazione già configurata)
+
 ```bash
 # Elenca tutti i notebook e ne esporta fonti/note in ./notebooklm_export
 python3 tools/notebooklm/connector.py

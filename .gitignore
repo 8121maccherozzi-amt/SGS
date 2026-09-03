@@ -3,6 +3,8 @@
 *.env
 storage_state*.json
 *.auth.json
+auth.json
+cookie*.txt
 NOTEBOOKLM_AUTH_JSON*
 
 # Export locali del connettore NotebookLM
