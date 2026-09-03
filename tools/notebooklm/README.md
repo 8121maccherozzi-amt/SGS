@@ -153,6 +153,50 @@ Output per ogni notebook:
 - `_metadata.json` con titoli e ID;
 - `index.json` nella cartella radice con l'elenco di tutti i notebook esportati.
 
+## Interrogare un notebook (domande e risposte)
+
+Oltre all'export, e' possibile porre domande a un notebook: la risposta e'
+generata dall'AI di NotebookLM ed e' ancorata **alle sole fonti caricate in
+quel notebook**, con citazioni inline `[1]`, `[2]`.
+
+```bash
+# 1. elenca i notebook (ID e titolo)
+bash tools/notebooklm/run_ask.sh --list
+
+# 2. poni la domanda (il notebook si indica per ID, anche parziale, o per titolo)
+bash tools/notebooklm/run_ask.sh -n "Normativa" \
+    "guarda le tue fonti normative e dimmi quali sono i requisiti per un SGS"
+```
+
+Il notebook si risolve per ID esatto, ID parziale o porzione di titolo. Se la
+stringa e' ambigua lo script elenca le corrispondenze e si ferma, senza
+scegliere al posto tuo.
+
+Opzioni utili, inoltrate direttamente a `notebooklm ask`:
+
+| Opzione | Effetto |
+|---|---|
+| `--json` | Output strutturato con gli ID delle fonti citate |
+| `--save-as-note` | Salva la risposta come nota nel notebook (con le citazioni cliccabili) |
+| `-s <source_id>` | Limita la risposta ad alcune fonti (ripetibile) |
+| `--new` | Avvia una conversazione nuova. **Distruttivo**: cancella lato server la conversazione corrente del notebook |
+| `--timeout N` | Timeout HTTP in secondi |
+
+Senza `--new` la domanda prosegue l'ultima conversazione di quel notebook, e
+il contesto precedente influenza la risposta.
+
+### Limiti da tenere presenti
+
+- **La risposta vale quanto le fonti del notebook.** NotebookLM risponde solo
+  su quello che e' stato caricato: se il corpus normativo e' parziale o
+  disallineato rispetto alla versione vigente, la risposta e' parziale o
+  disallineata, senza segnalarlo. Per un uso in ambito SGS le citazioni vanno
+  sempre riscontrate sul testo della norma.
+- **Le citazioni indicano la fonte, non la correttezza.** `[1]` dice da quale
+  documento e' tratto il passaggio, non che l'interpretazione sia corretta.
+- L'AI puo' riassumere e riformulare: per requisiti prescrittivi conviene
+  chiedere la citazione testuale del punto pertinente.
+
 ## Sicurezza
 
 - La cartella di export (default `notebooklm_export/`) e qualunque file
