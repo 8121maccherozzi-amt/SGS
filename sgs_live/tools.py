@@ -40,11 +40,15 @@ STRUMENTI: list[dict[str, Any]] = [
                 "tipo_documento": {"type": "string",
                                     "description": "Es. Procedura, Manuale, Registro, Istruzione Operativa."},
                 "codice_documento": {"type": "string", "description": "Es. TGV_PRC_11."},
+                "tema": {"type": "string",
+                          "description": "Area tematica dell'archivio in cui cercare (es. "
+                                         "«Formazione», «Manutenzione Veicoli - SRM», "
+                                         "«Monitoraggio»). L'archivio è organizzato per tema di "
+                                         "processo, non per tipo di documento: usare questo filtro "
+                                         "quando la domanda riguarda chiaramente un'area."},
                 "cartella": {"type": "string",
-                              "description": "Nome (anche parziale) della cartella in cui cercare. "
-                                             "I nomi delle cartelle dell'archivio indicano il tipo "
-                                             "di documento, il sistema o l'anno: usarli quando la "
-                                             "domanda li richiama."},
+                              "description": "Sottocartella specifica, quando serve restringere "
+                                             "oltre il tema."},
                 "massimo": {"type": "integer", "description": "Numero di passaggi (default 6, max 12)."},
             },
             "required": ["domanda"],
@@ -193,9 +197,11 @@ NOMI_SCRITTURA = {"proponi_norma", "proponi_indicatore", "proponi_misura"}
 def _intestazione(r: dict) -> str:
     """Riferimento citabile: cartella, codice, titolo, revisione, pagina, sezione."""
     parti = []
-    if r.get("percorso_relativo"):
-        parti.append(f"[{r['percorso_relativo']}]")
+    if r.get("tema"):
+        parti.append(f"[tema: {r['tema']}]")
     parti.append(f"{r['codice']} - {r['titolo']}")
+    if r.get("tipo") and r["tipo"] != "Altro":
+        parti.append(r["tipo"])
     if r.get("revisione"):
         parti.append(f"rev. {r['revisione']}")
     if r.get("pagina"):
@@ -209,7 +215,7 @@ def _cerca(par: dict) -> tuple[str, list[dict]]:
     risultati = cerca(
         par["domanda"], sistema=par.get("sistema"), tipo_documento=par.get("tipo_documento"),
         codice_documento=par.get("codice_documento"), cartella=par.get("cartella"),
-        massimo=min(int(par.get("massimo", 6)), 12),
+        tema=par.get("tema"), massimo=min(int(par.get("massimo", 6)), 12),
     )
     if not risultati:
         return ("Nessun passaggio trovato nei documenti indicizzati. Non inventare il contenuto: "
@@ -221,6 +227,7 @@ def _cerca(par: dict) -> tuple[str, list[dict]]:
         {"chunk_id": r["chunk_id"], "documento_id": r["documento_id"], "codice": r["codice"],
          "titolo": r["titolo"], "pagina": r["pagina"], "sezione": r["sezione"],
          "revisione": r["revisione"], "percorso_relativo": r["percorso_relativo"],
+         "tema": r["tema"], "tipo": r["tipo"],
          "evidenza": r["evidenza"], "testo": r["testo"][:2500]}
         for r in risultati
     ]
@@ -232,15 +239,15 @@ def _leggi_estratto(par: dict) -> tuple[str, list[dict]]:
     if not dato:
         return "Passaggio non trovato.", []
     citazione = {k: dato[k] for k in ("chunk_id", "documento_id", "codice", "titolo", "pagina",
-                                      "sezione", "revisione", "percorso_relativo")}
+                                      "sezione", "revisione", "percorso_relativo", "tema", "tipo")}
     citazione["evidenza"] = dato["testo"][:300]
     citazione["testo"] = dato["testo"][:2500]
     return f"{_intestazione(dato)}\n\n{dato['testo']}", [citazione]
 
 
 def _elenca_documenti(par: dict) -> tuple[str, list[dict]]:
-    sql = ("SELECT codice, titolo, tipo, sistema, revisione, percorso_relativo AS cartelle, "
-           "n_chunk FROM documenti WHERE 1=1")
+    sql = ("SELECT tema, codice, titolo, tipo, sistema, revisione, "
+           "percorso_relativo AS cartelle, n_chunk FROM documenti WHERE 1=1")
     p: list[Any] = []
     if par.get("sistema"):
         sql += " AND sistema=?"
@@ -248,7 +255,7 @@ def _elenca_documenti(par: dict) -> tuple[str, list[dict]]:
     if par.get("tipo"):
         sql += " AND tipo=?"
         p.append(par["tipo"])
-    elenco = righe(sql + " ORDER BY sistema, codice", p)
+    elenco = righe(sql + " ORDER BY tema, sistema, codice", p)
     if not elenco:
         return "Nessun documento indicizzato. Caricare i file nella cartella documenti e avviare l'indicizzazione.", []
     return json.dumps(elenco, ensure_ascii=False, indent=1), []
@@ -283,7 +290,7 @@ def _consulta_indicatori(par: dict) -> tuple[str, list[dict]]:
     if par.get("sistema"):
         sql += " AND sistema=?"
         p.append(par["sistema"])
-    elenco = righe(sql + " ORDER BY sistema, codice", p)
+    elenco = righe(sql + " ORDER BY tema, sistema, codice", p)
 
     uscita = []
     for ind in elenco:

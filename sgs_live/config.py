@@ -103,14 +103,21 @@ CARTELLA_WEB = RADICE / "web"
 # Sistemi TGV presidiati (prefissi usati nella naming convention documentale).
 SISTEMI = ["TGV", "MET", "FGC", "FPG", "FIL"]
 
-TIPI_DOCUMENTO = [
-    "Politica della Sicurezza",
-    "Manuale",
-    "Procedura",
-    "Istruzione Operativa",
-    "Norma di Esercizio",
-    "Ordine di Servizio",
-    "Registro",
-    "Modulo",
-    "Altro",
-]
+# Tipologie previste dalla procedura di gestione della documentazione: sigla -> descrizione.
+TIPI_DOCUMENTO = {
+    # Documenti strategici di indirizzo e pianificazione
+    "POL": "Politica della Sicurezza",
+    "MSGS": "Manuale SGS",
+    "MSRM": "Manuale SRM",
+    "DVR": "Documento di Valutazione dei Rischi",
+    "PAS": "Piano Annuale della Sicurezza",
+    "RAS": "Relazione Annuale della Sicurezza",
+    "RIS": "Riesame della Direzione per la Sicurezza",
+    # Documenti organizzativi e operativi
+    "PRC": "Procedura organizzativa",
+    "IST": "Istruzione operativa",
+    "RDE": "Regolamento di Esercizio",
+    "ODS": "Ordine di Servizio",
+    "RGS": "Registro",
+    "MOD": "Modulo",
+}

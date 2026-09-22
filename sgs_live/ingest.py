@@ -15,66 +15,74 @@ MAX_CELLE_FOGLIO = 20000
 DIM_CHUNK = 1400
 SOVRAPPOSIZIONE = 200
 
-TIPO_DA_CODICE = {
-    "MSGS": "Manuale",
-    "PRC": "Procedura",
-    "IO": "Istruzione Operativa",
-    "RGS": "Registro",
-    "MOD": "Modulo",
-    "NE": "Norma di Esercizio",
-    "ODS": "Ordine di Servizio",
-    "DVR": "Registro",
-    "POL": "Politica della Sicurezza",
-}
+from .config import TIPI_DOCUMENTO
 
+# Naming convention: [SISTEMA_]SIGLA[_numero][_SOTTOSIGLA_numero]
 # Es.: "TGV_PRC_11 - Monitoraggio prestazioni rev 02.pdf", "MET_PRC_06_RGS_02 Hazard Log.xlsx"
+SIGLE = "|".join(TIPI_DOCUMENTO)
 RE_CODICE = re.compile(
-    r"^(TGV|MET|FGC|FPG|FIL|FER)[_\- ]?(MSGS|PRC|IO|MOD|NE|ODS|DVR|POL)?[_\- ]?(\d{1,3})?"
-    r"(?:[_\- ]?(RGS|MOD|IO|ALL)[_\- ]?(\d{1,3}))?",
+    rf"^(?:(TGV|MET|FGC|FPG|FIL|FER)[_\- ]?)?({SIGLE})(?:[_\- ]?(\d{{1,4}}))?"
+    rf"(?:[_\- ]?(RGS|MOD|IST|ALL)[_\- ]?(\d{{1,4}}))?",
     re.IGNORECASE,
 )
+RE_SOLO_SISTEMA = re.compile(r"^(TGV|MET|FGC|FPG|FIL|FER)[_\- ]", re.IGNORECASE)
 RE_REVISIONE = re.compile(r"\brev\.?\s*([0-9]{1,2}(?:\.[0-9]{1,2})?)", re.IGNORECASE)
 
-# I nomi delle cartelle sono informazione, non solo posizione: se il nome del file
-# non dice a quale sistema o tipo appartiene il documento, lo si ricava da lì.
-RE_NUMERAZIONE = re.compile(r"^\s*[0-9]{1,3}[\.\-_) ]+|^\s*[A-Za-z][\.\-_) ]+(?=[A-Za-z]{3})")
+# Le cartelle dell'archivio sono aree tematiche di processo, non tipologie di documento:
+# il tipo si legge dalla sigla nel nome del file, il tema dalla cartella.
+RE_NUMERAZIONE = re.compile(r"^\s*[0-9]{1,3}\s*[\.\-_)]\s*|^\s*[0-9]{1,3}\s+")
+
+TEMI = [
+    ("Manuale SGS", ("manuale sgs", "manuale del sgs", "manuale")),
+    ("Procedure Organizzative", ("procedure organizzative", "procedure", "procedura")),
+    ("Formazione", ("formazione", "addestramento", "abilitazion", "competenz", "cdf", "sgc")),
+    ("Valutazione dei rischi", ("valutazione dei rischi", "valutazione rischi", "rischi", "rischio",
+                                 "hazard", "evento pericoloso", "eventi pericolosi", "dvr")),
+    ("Regolamento di Esercizio", ("regolamento di esercizio", "regolamento", "circolazione",
+                                   "emergenza", "evacuazione", "rde")),
+    ("Manutenzione Infrastruttura", ("manutenzione infrastruttura", "infrastruttura", "armamento",
+                                      "binario", "linea aerea", "sottostazion", "impianti fissi")),
+    ("Manutenzione Veicoli - SRM", ("manutenzione veicoli", "veicoli", "rotabil", "srm",
+                                     "officina", "msrm")),
+    ("Monitoraggio", ("monitoraggio", "indicator", "ips", "prestazioni di sicurezza")),
+    ("Non Conformità ed Eventi Indesiderati", ("non conformit", "eventi indesiderati",
+                                                "evento indesiderato", "incident", "inconvenient",
+                                                "prescrizion", "anormalit")),
+]
 
 SISTEMA_DA_CARTELLA = [
-    (("metropolitana", "metro", "met"), "MET"),
-    (("genova casella", "casella", "fgc", "ferrovia genova"), "FGC"),
-    (("principe granarolo", "granarolo", "fpg"), "FPG"),
-    (("filovia", "filoviaria", "filobus", "fil"), "FIL"),
-    (("comune", "comuni", "trasversale", "tgv", "guida vincolata"), "TGV"),
-]
-
-TIPO_DA_CARTELLA = [
-    (("politica",), "Politica della Sicurezza"),
-    (("manuale", "msgs"), "Manuale"),
-    (("procedure", "procedura", "prc"), "Procedura"),
-    (("istruzioni operative", "istruzione operativa", "istruzioni", "io"), "Istruzione Operativa"),
-    (("norme di esercizio", "norma di esercizio"), "Norma di Esercizio"),
-    (("ordini di servizio", "ordine di servizio", "ods"), "Ordine di Servizio"),
-    (("registri", "registro", "rgs"), "Registro"),
-    (("moduli", "modulo", "mod"), "Modulo"),
+    (("metropolitana", "metro"), "MET"),
+    (("genova casella", "casella", "ferrovia genova"), "FGC"),
+    (("principe granarolo", "granarolo"), "FPG"),
+    (("filovia", "filoviaria", "filobus"), "FIL"),
+    (("comune", "comuni", "trasversale", "guida vincolata"), "TGV"),
 ]
 
 
-def _nome_pulito(nome: str) -> str:
-    """Toglie la numerazione iniziale: «01 - Procedure» e «Procedure» sono la stessa cosa."""
+def nome_pulito(nome: str) -> str:
+    """«1 - Manuale SGS» e «Manuale SGS» sono la stessa cartella: la numerazione non conta."""
     return RE_NUMERAZIONE.sub("", nome).strip().lower()
 
 
+def tema_da_cartella(nome: str) -> str:
+    """Riconduce il nome della cartella a un'area tematica nota; altrimenti lo restituisce pulito."""
+    pulito = nome_pulito(nome)
+    for canonico, chiavi in TEMI:
+        if any(k in pulito for k in chiavi):
+            return canonico
+    return RE_NUMERAZIONE.sub("", nome).strip() or nome
+
+
 def metadati_da_cartelle(nomi: list[str]) -> dict:
-    """Ricava sistema e tipo dai nomi delle cartelle che contengono il documento."""
+    """Tema (dalla cartella più esterna) e, come ripiego, sistema se la cartella lo nomina."""
     trovati: dict[str, str] = {}
-    for nome in nomi:                      # dalla più esterna alla più interna: vince la più vicina
-        pulito = _nome_pulito(nome)
+    if nomi:
+        trovati["tema"] = tema_da_cartella(nomi[0])
+    for nome in nomi:
+        pulito = nome_pulito(nome)
         for chiavi, sistema in SISTEMA_DA_CARTELLA:
             if any(k in pulito for k in chiavi):
                 trovati["sistema"] = sistema
-        for chiavi, tipo in TIPO_DA_CARTELLA:
-            if any(k in pulito for k in chiavi):
-                trovati["tipo"] = tipo
     return trovati
 
 
@@ -93,35 +101,43 @@ def _impronta(percorso: Path) -> str:
 
 
 def metadati_da_nome(percorso: Path) -> dict:
-    """Deduce codice / tipo / sistema / revisione dal nome file (naming TGV_PRC_xx)."""
+    """Deduce codice, tipologia, sistema e revisione dal nome del file.
+
+    La tipologia viene SEMPRE dalla sigla (POL, MSGS, PRC, IST, RDE, RGS, ...):
+    è l'unico dato che la stabilisce, perché le cartelle esprimono il tema.
+    """
     nome = percorso.stem
     sistema, tipo, codice = "TGV", "Altro", None
 
     m = RE_CODICE.match(nome)
-    if m and m.group(1):
-        sistema = m.group(1).upper()
-        if sistema == "FER":          # riferimenti legacy: FER_PRC_xx == TGV_PRC_xx
-            sistema = "TGV"
-        parti = [sistema]
-        if m.group(2):
-            parti.append(m.group(2).upper())
-            tipo = TIPO_DA_CODICE.get(m.group(2).upper(), "Altro")
+    if m and m.group(2):
+        sigla = m.group(2).upper()
+        tipo = TIPI_DOCUMENTO.get(sigla, "Altro")
+        if m.group(1):
+            sistema = m.group(1).upper()
+            if sistema == "FER":        # riferimenti legacy: FER_PRC_xx equivale a TGV_PRC_xx
+                sistema = "TGV"
+        parti = [sistema, sigla]
         if m.group(3):
             parti.append(m.group(3).zfill(2))
         if m.group(4) and m.group(5):
-            parti.extend([m.group(4).upper(), m.group(5).zfill(2)])
-            tipo = TIPO_DA_CODICE.get(m.group(4).upper(), tipo)
-        if len(parti) > 1:
-            codice = "_".join(parti)
+            sottosigla = m.group(4).upper()
+            parti.extend([sottosigla, m.group(5).zfill(2)])
+            tipo = TIPI_DOCUMENTO.get(sottosigla, tipo)
+        codice = "_".join(parti)
+    else:
+        prefisso = RE_SOLO_SISTEMA.match(nome)
+        if prefisso:
+            sistema = prefisso.group(1).upper()
+            if sistema == "FER":
+                sistema = "TGV"
 
     titolo = nome
     for separatore in (" - ", " – ", " — "):
         if separatore in nome:
-            titolo = nome.split(separatore, 1)[1].strip()
+            testa, coda = nome.split(separatore, 1)
+            titolo = coda.strip() if codice or RE_SOLO_SISTEMA.match(testa) else nome
             break
-    else:
-        if codice:
-            titolo = nome[len(nome.split()[0]):].strip(" -_–—") or nome
 
     rev = RE_REVISIONE.search(nome)
     return {
@@ -282,12 +298,14 @@ def indicizza_file(percorso: Path, *, utente: str = "sistema", forza: bool = Fal
     percorso_relativo = "/".join(nomi_cartelle)
 
     dalle_cartelle = metadati_da_cartelle(nomi_cartelle)
-    if meta["tipo"] == "Altro" and dalle_cartelle.get("tipo"):
-        meta["tipo"] = dalle_cartelle["tipo"]
+    tema = dalle_cartelle.get("tema", "")
     if not RE_CODICE.match(percorso.stem) and dalle_cartelle.get("sistema"):
         meta["sistema"] = dalle_cartelle["sistema"]
 
-    contesto = " · ".join(filter(None, [meta["codice"], meta["titolo"], " / ".join(nomi_cartelle)]))
+    # Il contesto cercabile comprende tema e sottocartelle: nominarli in una domanda
+    # deve bastare a recuperare i documenti che stanno lì.
+    contesto = " · ".join(filter(None, [
+        meta["codice"], meta["titolo"], meta["tipo"], tema, " / ".join(nomi_cartelle)]))
 
     with connessione() as con:
         meta["codice"], esistente = _codice_disponibile(con, meta["codice"], percorso)
@@ -306,21 +324,21 @@ def indicizza_file(percorso: Path, *, utente: str = "sistema", forza: bool = Fal
             con.execute(
                 """UPDATE documenti SET codice=?, titolo=?, tipo=?, sistema=?, revisione=?,
                        percorso=?, impronta=?, n_chunk=?, indicizzato_il=?, cartella=?,
-                       percorso_relativo=? WHERE id=?""",
+                       percorso_relativo=?, tema=? WHERE id=?""",
                 (meta["codice"], meta["titolo"], meta["tipo"], meta["sistema"], meta["revisione"],
                  str(percorso), impronta, len(pezzi), adesso(),
-                 str(cartella) if cartella else None, percorso_relativo, doc_id),
+                 str(cartella) if cartella else None, percorso_relativo, tema, doc_id),
             )
             azione = "reindicizzato"
         else:
             cur = con.execute(
                 """INSERT INTO documenti (codice, titolo, tipo, sistema, revisione, percorso,
                                           impronta, n_chunk, indicizzato_il, cartella,
-                                          percorso_relativo)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+                                          percorso_relativo, tema)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (meta["codice"], meta["titolo"], meta["tipo"], meta["sistema"], meta["revisione"],
                  str(percorso), impronta, len(pezzi), adesso(),
-                 str(cartella) if cartella else None, percorso_relativo),
+                 str(cartella) if cartella else None, percorso_relativo, tema),
             )
             doc_id = cur.lastrowid
             azione = "indicizzato"
@@ -332,11 +350,11 @@ def indicizza_file(percorso: Path, *, utente: str = "sistema", forza: bool = Fal
               " · ".join(filter(None, [contesto, p.sezione])), p.testo) for p in pezzi],
         )
         registra_audit(con, utente=utente, azione=f"documento_{azione}", entita="documenti",
-                       entita_id=doc_id, dopo={**meta, "cartelle": percorso_relativo,
+                       entita_id=doc_id, dopo={**meta, "tema": tema, "cartelle": percorso_relativo,
                                                "chunk": len(pezzi)}, origine="indicizzazione")
 
     return {"codice": meta["codice"], "titolo": meta["titolo"], "stato": azione,
-            "chunk": len(pezzi), "cartelle": percorso_relativo}
+            "chunk": len(pezzi), "tema": tema, "cartelle": percorso_relativo}
 
 
 def conta_indicizzabili(cartella: Path) -> dict:

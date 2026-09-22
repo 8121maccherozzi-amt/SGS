@@ -91,10 +91,13 @@ function schedaFonte(c, domanda, aperta) {
     .replace(/^#{1,6}\s*/gm, "")       // titoli Markdown dei documenti di testo
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+  const sottocartella = (c.percorso_relativo || "").split("/").slice(1).join(" / ");
   return `<details class="fonte"${aperta ? " open" : ""}>
-    <summary>${c.percorso_relativo ? `<span class="cartella">${esc(c.percorso_relativo)}</span>` : ""}` +
+    <summary>${c.tema ? `<span class="cartella">${esc(c.tema)}</span>` : ""}` +
+    (sottocartella ? `<span class="riferimento">${esc(sottocartella)} </span>` : "") +
     `<strong>${esc(c.codice)}</strong>${titoloAggiuntivo(c)}` +
-    `<div class="riferimento">${esc(fonteEtichetta(c).replace(c.codice, "").replace(/^ · /, "")) || "&nbsp;"}</div></summary>` +
+    `<div class="riferimento">${esc([c.tipo && c.tipo !== "Altro" ? c.tipo : null,
+        fonteEtichetta(c).replace(c.codice, "").replace(/^ · /, "")].filter(Boolean).join(" · ")) || "&nbsp;"}</div></summary>` +
     `<div class="estratto">${evidenzia(testo, domanda)}</div>` +
     (c.documento_id ? `<div class="azioni-fonte"><a href="/api/documenti/${c.documento_id}/file" download>Apri il documento originale</a></div>` : "") +
     "</details>";
@@ -403,10 +406,12 @@ $("#filtro-sistema-ips").addEventListener("change", caricaIndicatori);
 async function caricaDocumenti() {
   const elenco = await api("/api/documenti");
   $("#tabella-documenti").innerHTML = elenco.length ? `<table><thead><tr>
-      <th>Cartella</th><th>Codice</th><th>Titolo</th><th>Tipo</th><th>Sist.</th><th>Rev.</th>
+      <th>Tema</th><th>Codice</th><th>Titolo</th><th>Tipo</th><th>Sist.</th><th>Rev.</th>
       <th>Passaggi</th><th>Indicizzato il</th><th></th></tr></thead><tbody>` +
     elenco.map((d) => `<tr>
-      <td>${d.percorso_relativo ? `<span class="pillola">${esc(d.percorso_relativo)}</span>` : "—"}</td>
+      <td>${d.tema ? `<span class="pillola">${esc(d.tema)}</span>` : "—"}${
+        (d.percorso_relativo || "").includes("/")
+          ? `<br><small style="color:var(--testo-tenue)">${esc(d.percorso_relativo.split("/").slice(1).join(" / "))}</small>` : ""}</td>
       <td><strong>${esc(d.codice)}</strong></td><td>${esc(d.titolo)}</td>
       <td>${esc(d.tipo)}</td><td>${esc(d.sistema)}</td><td>${esc(d.revisione || "—")}</td>
       <td>${d.n_chunk}</td><td>${esc((d.indicizzato_il || "").slice(0, 16).replace("T", " "))}</td>
@@ -523,7 +528,12 @@ function applicaConfigurazione(c) {
     ? '<strong style="color:var(--intervento)">Attenzione: una cartella non è raggiungibile.</strong> ' +
       "Se è un'unità di rete, verifica che sia collegata."
     : "";
+  const temi = (c.temi || []);
   $("#info-formati").innerHTML =
+    (temi.length
+      ? `Aree tematiche riconosciute nell'archivio: ${temi.map((t) =>
+          `<span class="pillola">${esc(t.tema)} (${t.documenti})</span>`).join(" ")}<br>`
+      : "") +
     `Formati letti: ${esc((c.estensioni || []).join(" "))}<br>` +
     `File e cartelle sempre ignorati: <code>${esc((c.esclusioni || []).join(" ; "))}</code>`;
 

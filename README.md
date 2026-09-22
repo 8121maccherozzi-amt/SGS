@@ -111,22 +111,35 @@ SGS_SOLA_LETTURA=1
 | `SGS_DB` | File SQLite con indice, registri e log di tracciabilità |
 | `SGS_INDIRIZZO` | `127.0.0.1` di default: raggiungibile solo dal PC su cui gira |
 
-### I nomi delle cartelle sono informazione
+### Temi (cartelle) e tipologie (sigle)
 
-L'organizzazione dell'archivio viene letta come contenuto, non come semplice posizione:
+L'archivio è organizzato per **aree tematiche di processo**, non per tipologia di documento. I due
+dati vengono letti da fonti diverse:
 
-- il percorso relativo (es. `03 - Istruzioni Operative/Ferrovia Genova Casella`) è indicizzato
-  insieme al testo, quindi una domanda che nomina una cartella («i rilievi dell'audit 2026»)
-  recupera i documenti che stanno lì dentro;
-- quando il nome del file non dice il tipo o il sistema, li ricava dai nomi delle cartelle:
-  `Procedure` → Procedura, `Istruzioni Operative` → Istruzione Operativa, `Registri` → Registro,
-  `Metropolitana` → MET, `Ferrovia Genova Casella` → FGC, `Principe Granarolo` → FPG,
-  `Filovia` → FIL. La numerazione iniziale (`01 - `, `02_`) viene ignorata nel confronto;
-- l'assistente può restringere la ricerca a una cartella, e ogni citazione mostra da quale
-  cartella arriva il passaggio.
+| Dato | Da dove viene | Esempio |
+|---|---|---|
+| **Tema** | Nome della cartella di primo livello, ignorando la numerazione | `3 - Formazione` → Formazione |
+| **Tipologia** | Sigla nel nome del file | `TGV_IST_04` → Istruzione operativa |
+| **Sistema** | Prefisso nel nome del file; in mancanza, una cartella che nomini il sistema | `MET_PRC_06` → MET |
 
-I termini riconosciuti stanno in `SISTEMA_DA_CARTELLA` e `TIPO_DA_CARTELLA` in
-`sgs_live/ingest.py`: vanno adeguati alla nomenclatura effettiva dell'archivio.
+Aree tematiche riconosciute (`TEMI` in `sgs_live/ingest.py`, con i sinonimi che le richiamano):
+Manuale SGS · Procedure Organizzative · Formazione · Valutazione dei rischi · Regolamento di
+Esercizio · Manutenzione Infrastruttura · Manutenzione Veicoli - SRM · Monitoraggio · Non
+Conformità ed Eventi Indesiderati. Una cartella non riconosciuta diventa comunque un tema, con il
+proprio nome.
+
+Tipologie previste dalla procedura di gestione della documentazione (`TIPI_DOCUMENTO` in
+`sgs_live/config.py`): POL, MSGS, MSRM, DVR, PAS, RAS, RIS (strategici); PRC, IST, RDE, ODS, RGS,
+MOD (organizzativi e operativi).
+
+Conseguenze pratiche:
+
+- il tema è indicizzato insieme al testo, quindi una domanda che richiama un'area («le competenze
+  di chi manutiene i rotabili») fa emergere i documenti di quell'area anche se non ne usa le
+  parole esatte;
+- l'assistente può restringere la ricerca a un tema, e la mappa delle aree presenti gli viene
+  fornita a ogni domanda;
+- ogni estratto mostra il tema di provenienza.
 
 Codice, tipo, sistema e revisione sono dedotti dal nome file secondo la naming convention del SGS —
 `TGV_PRC_11 - Monitoraggio prestazioni rev 02.pdf`, `MET_PRC_06_RGS_01 - Hazard Log rev 03.xlsx`.

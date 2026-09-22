@@ -17,7 +17,7 @@ from .config import (CARTELLA_WEB, ESCLUSIONI, MODALITA, MODELLO, SISTEMI, SOLA_
                      TIPI_DOCUMENTO, cartella_caricamenti, cartelle_documenti, salva_cartelle)
 from .db import adesso, connessione, inizializza, registra_audit, riga, righe, stato_indicatore
 from .ingest import ESTENSIONI, conta_indicizzabili, indicizza_cartella
-from .retrieval import cerca as cerca_passaggi, estratto as leggi_estratto
+from .retrieval import cerca as cerca_passaggi, estratto as leggi_estratto, temi_presenti
 
 app = FastAPI(title="SGS Live", version="1.0")
 inizializza()
@@ -41,6 +41,7 @@ def configurazione() -> dict:
         "cartelle_documenti": [
             {"percorso": str(c), "raggiungibile": c.exists()} for c in cartelle_documenti()],
         "cartella_caricamenti": str(cartella_caricamenti()) if not SOLA_LETTURA else None,
+        "temi": temi_presenti(),
     }
 
 
@@ -107,11 +108,13 @@ def ricerca(corpo: dict = Body(...)) -> dict:
         raise HTTPException(400, "Richiesta vuota.")
     risultati = cerca_passaggi(domanda, sistema=corpo.get("sistema") or None,
                                cartella=corpo.get("cartella") or None,
+                               tema=corpo.get("tema") or None,
                                massimo=int(corpo.get("massimo", 8)))
     return {"risultati": [
         {"chunk_id": r["chunk_id"], "documento_id": r["documento_id"], "codice": r["codice"],
          "titolo": r["titolo"], "revisione": r["revisione"], "pagina": r["pagina"],
          "sezione": r["sezione"], "percorso_relativo": r["percorso_relativo"],
+         "tema": r["tema"], "tipo": r["tipo"],
          "testo": r["testo"], "evidenza": r["evidenza"]} for r in risultati]}
 
 
@@ -333,9 +336,9 @@ def salva_misura(indicatore_id: int, corpo: dict = Body(...)) -> dict:
 
 @app.get("/api/documenti")
 def elenco_documenti() -> list[dict]:
-    return righe("SELECT id, codice, titolo, tipo, sistema, revisione, stato, n_chunk, "
+    return righe("SELECT id, tema, codice, titolo, tipo, sistema, revisione, stato, n_chunk, "
                  "indicizzato_il, percorso, percorso_relativo FROM documenti "
-                 "ORDER BY percorso_relativo, codice")
+                 "ORDER BY tema, codice")
 
 
 @app.post("/api/indicizza")

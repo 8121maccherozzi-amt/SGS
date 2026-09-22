@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS documenti (
     indicizzato_il TEXT,
     cartella TEXT,
     percorso_relativo TEXT,
+    tema TEXT,
     note TEXT
 );
 
@@ -167,6 +168,7 @@ def connessione() -> sqlite3.Connection:
 MIGRAZIONI = [
     ("documenti", "cartella", "TEXT"),
     ("documenti", "percorso_relativo", "TEXT"),
+    ("documenti", "tema", "TEXT"),
     ("chunk", "contesto", "TEXT"),
 ]
 

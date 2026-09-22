@@ -8,6 +8,7 @@ import anthropic
 
 from .config import MODELLO
 from .db import adesso, connessione, righe
+from .retrieval import temi_presenti
 from .tools import STRUMENTI, esegui
 
 MAX_ITERAZIONI = 8
@@ -46,9 +47,23 @@ rischio o ruoli diversi da quelli del SGS; non classificare «a occhio» un live
 Soglie IPS: Allarme = 1° livello di attenzione, Intervento = limite massimo (TGV_PRC_11); il \
 superamento della Soglia di Intervento comporta Riunione Straordinaria del Riesame.
 
+## Organizzazione dell'archivio
+I documenti sono raccolti in cartelle che corrispondono ad AREE TEMATICHE di processo, non a tipologie documentali. La tipologia si legge dalla sigla nel codice (POL, MSGS, MSRM, DVR, PAS, RAS, RIS, PRC, IST, RDE, ODS, RGS, MOD); il tema si legge dalla cartella. Quando la domanda riguarda chiaramente un'area, usa il parametro `tema` di `cerca_nei_documenti`, e cita sempre il tema di provenienza del passaggio.
+
 ## Stile
 Risposte sintetiche e dirette, tabelle o elenchi puntati dove aiutano. Segnala sempre ipotesi e \
 dati assunti senza conferma. Formato Markdown."""
+
+
+def istruzioni() -> str:
+    """Istruzioni di sistema con la mappa tematica effettiva dell'archivio indicizzato."""
+    temi = temi_presenti()
+    if not temi:
+        return ISTRUZIONI
+    elenco = "\n".join(
+        f"- {t['tema']} ({t['documenti']} document{'o' if t['documenti'] == 1 else 'i'})"
+        for t in temi)
+    return f"{ISTRUZIONI}\n\n### Aree tematiche presenti nell'archivio\n{elenco}"
 
 
 def _cliente() -> anthropic.Anthropic:
@@ -64,7 +79,7 @@ def _chiama(cliente: anthropic.Anthropic, messaggi: list[dict]) -> Any:
     comune = dict(
         model=MODELLO,
         max_tokens=MAX_TOKEN,
-        system=[{"type": "text", "text": ISTRUZIONI, "cache_control": {"type": "ephemeral"}}],
+        system=[{"type": "text", "text": istruzioni(), "cache_control": {"type": "ephemeral"}}],
         tools=STRUMENTI,
         thinking={"type": "adaptive"},
         messages=messaggi,
