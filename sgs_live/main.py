@@ -13,11 +13,11 @@ from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import agent, tools
-from .config import (CARTELLA_DOCUMENTI, CARTELLE_DOCUMENTI, CARTELLA_WEB, ESCLUSIONI, MODALITA,
-                     MODELLO, SISTEMI, SOLA_LETTURA, TIPI_DOCUMENTO)
+from .config import (CARTELLA_WEB, ESCLUSIONI, MODALITA, MODELLO, SISTEMI, SOLA_LETTURA,
+                     TIPI_DOCUMENTO, cartella_caricamenti, cartelle_documenti, salva_cartelle)
 from .db import adesso, connessione, inizializza, registra_audit, riga, righe, stato_indicatore
-from .ingest import ESTENSIONI, indicizza_cartella
-from .retrieval import cerca as cerca_passaggi
+from .ingest import ESTENSIONI, conta_indicizzabili, indicizza_cartella
+from .retrieval import cerca as cerca_passaggi, estratto as leggi_estratto
 
 app = FastAPI(title="SGS Live", version="1.0")
 inizializza()
@@ -39,9 +39,32 @@ def configurazione() -> dict:
         "estensioni": sorted(ESTENSIONI),
         "esclusioni": ESCLUSIONI,
         "cartelle_documenti": [
-            {"percorso": str(c), "raggiungibile": c.exists()} for c in CARTELLE_DOCUMENTI],
-        "cartella_caricamenti": str(CARTELLA_DOCUMENTI) if not SOLA_LETTURA else None,
+            {"percorso": str(c), "raggiungibile": c.exists()} for c in cartelle_documenti()],
+        "cartella_caricamenti": str(cartella_caricamenti()) if not SOLA_LETTURA else None,
     }
+
+
+@app.post("/api/cartelle")
+def imposta_cartelle(corpo: dict = Body(...)) -> dict:
+    """Cambia le cartelle sorgente dalla dashboard, senza toccare file di configurazione."""
+    utente = (corpo.get("utente") or "").strip()
+    if not utente:
+        raise HTTPException(400, "Indicare l'operatore: la modifica viene tracciata.")
+    elenco = corpo.get("cartelle") or []
+    if isinstance(elenco, str):
+        elenco = [c for c in elenco.split(";")]
+    prima = [str(c) for c in cartelle_documenti()]
+    try:
+        nuove = salva_cartelle(elenco)
+    except (ValueError, OSError) as exc:
+        raise HTTPException(400, str(exc))
+
+    esito = [{"percorso": str(c), **conta_indicizzabili(c)} for c in nuove]
+    with connessione() as con:
+        registra_audit(con, utente=utente, azione="cartelle_sorgente_modificate", entita="documenti",
+                       prima={"cartelle": prima}, dopo={"cartelle": [str(c) for c in nuove]},
+                       note="; ".join(f"{e['percorso']} → {e['utili']} file indicizzabili" for e in esito))
+    return {"cartelle": esito}
 
 
 # ------------------------------------------------------------------ stato ----
@@ -83,11 +106,22 @@ def ricerca(corpo: dict = Body(...)) -> dict:
     if not domanda:
         raise HTTPException(400, "Richiesta vuota.")
     risultati = cerca_passaggi(domanda, sistema=corpo.get("sistema") or None,
+                               cartella=corpo.get("cartella") or None,
                                massimo=int(corpo.get("massimo", 8)))
     return {"risultati": [
-        {"chunk_id": r["chunk_id"], "codice": r["codice"], "titolo": r["titolo"],
-         "revisione": r["revisione"], "pagina": r["pagina"], "sezione": r["sezione"],
+        {"chunk_id": r["chunk_id"], "documento_id": r["documento_id"], "codice": r["codice"],
+         "titolo": r["titolo"], "revisione": r["revisione"], "pagina": r["pagina"],
+         "sezione": r["sezione"], "percorso_relativo": r["percorso_relativo"],
          "testo": r["testo"], "evidenza": r["evidenza"]} for r in risultati]}
+
+
+@app.get("/api/estratto/{chunk_id}")
+def estratto(chunk_id: int, contesto: int = 1) -> dict:
+    """Testo integrale di un passaggio citato, per mostrarlo sotto la risposta."""
+    dato = leggi_estratto(chunk_id, contesto=max(0, min(contesto, 3)))
+    if not dato:
+        raise HTTPException(404, "Passaggio non trovato: l'indice potrebbe essere stato rifatto.")
+    return dato
 
 
 @app.post("/api/chat")
@@ -300,7 +334,8 @@ def salva_misura(indicatore_id: int, corpo: dict = Body(...)) -> dict:
 @app.get("/api/documenti")
 def elenco_documenti() -> list[dict]:
     return righe("SELECT id, codice, titolo, tipo, sistema, revisione, stato, n_chunk, "
-                 "indicizzato_il, percorso FROM documenti ORDER BY sistema, codice")
+                 "indicizzato_il, percorso, percorso_relativo FROM documenti "
+                 "ORDER BY percorso_relativo, codice")
 
 
 @app.post("/api/indicizza")
@@ -317,8 +352,9 @@ async def carica(file: UploadFile = File(...), utente: str = Form("operatore")) 
     nome = Path(file.filename or "documento").name
     if Path(nome).suffix.lower() not in ESTENSIONI:
         raise HTTPException(400, f"Estensione non gestita. Ammesse: {', '.join(sorted(ESTENSIONI))}")
-    CARTELLA_DOCUMENTI.mkdir(parents=True, exist_ok=True)
-    destinazione = CARTELLA_DOCUMENTI / nome
+    destinazione_cartella = cartella_caricamenti()
+    destinazione_cartella.mkdir(parents=True, exist_ok=True)
+    destinazione = destinazione_cartella / nome
     with destinazione.open("wb") as f:
         shutil.copyfileobj(file.file, f)
     from .ingest import indicizza_file

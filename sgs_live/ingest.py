@@ -7,7 +7,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from .config import CARTELLE_DOCUMENTI, ESCLUSIONI
+from .config import ESCLUSIONI, cartelle_documenti
 from .db import adesso, connessione, registra_audit
 
 ESTENSIONI = {".pdf", ".docx", ".txt", ".md", ".xlsx", ".xlsm"}
@@ -34,6 +34,48 @@ RE_CODICE = re.compile(
     re.IGNORECASE,
 )
 RE_REVISIONE = re.compile(r"\brev\.?\s*([0-9]{1,2}(?:\.[0-9]{1,2})?)", re.IGNORECASE)
+
+# I nomi delle cartelle sono informazione, non solo posizione: se il nome del file
+# non dice a quale sistema o tipo appartiene il documento, lo si ricava da lì.
+RE_NUMERAZIONE = re.compile(r"^\s*[0-9]{1,3}[\.\-_) ]+|^\s*[A-Za-z][\.\-_) ]+(?=[A-Za-z]{3})")
+
+SISTEMA_DA_CARTELLA = [
+    (("metropolitana", "metro", "met"), "MET"),
+    (("genova casella", "casella", "fgc", "ferrovia genova"), "FGC"),
+    (("principe granarolo", "granarolo", "fpg"), "FPG"),
+    (("filovia", "filoviaria", "filobus", "fil"), "FIL"),
+    (("comune", "comuni", "trasversale", "tgv", "guida vincolata"), "TGV"),
+]
+
+TIPO_DA_CARTELLA = [
+    (("politica",), "Politica della Sicurezza"),
+    (("manuale", "msgs"), "Manuale"),
+    (("procedure", "procedura", "prc"), "Procedura"),
+    (("istruzioni operative", "istruzione operativa", "istruzioni", "io"), "Istruzione Operativa"),
+    (("norme di esercizio", "norma di esercizio"), "Norma di Esercizio"),
+    (("ordini di servizio", "ordine di servizio", "ods"), "Ordine di Servizio"),
+    (("registri", "registro", "rgs"), "Registro"),
+    (("moduli", "modulo", "mod"), "Modulo"),
+]
+
+
+def _nome_pulito(nome: str) -> str:
+    """Toglie la numerazione iniziale: «01 - Procedure» e «Procedure» sono la stessa cosa."""
+    return RE_NUMERAZIONE.sub("", nome).strip().lower()
+
+
+def metadati_da_cartelle(nomi: list[str]) -> dict:
+    """Ricava sistema e tipo dai nomi delle cartelle che contengono il documento."""
+    trovati: dict[str, str] = {}
+    for nome in nomi:                      # dalla più esterna alla più interna: vince la più vicina
+        pulito = _nome_pulito(nome)
+        for chiavi, sistema in SISTEMA_DA_CARTELLA:
+            if any(k in pulito for k in chiavi):
+                trovati["sistema"] = sistema
+        for chiavi, tipo in TIPO_DA_CARTELLA:
+            if any(k in pulito for k in chiavi):
+                trovati["tipo"] = tipo
+    return trovati
 
 
 @dataclass
@@ -230,6 +272,23 @@ def indicizza_file(percorso: Path, *, utente: str = "sistema", forza: bool = Fal
     meta = metadati_da_nome(percorso)
     impronta = _impronta(percorso)
 
+    # Cartelle che contengono il documento, relative alla radice configurata.
+    nomi_cartelle: list[str] = []
+    if cartella:
+        try:
+            nomi_cartelle = list(percorso.relative_to(cartella).parts[:-1])
+        except ValueError:
+            nomi_cartelle = []
+    percorso_relativo = "/".join(nomi_cartelle)
+
+    dalle_cartelle = metadati_da_cartelle(nomi_cartelle)
+    if meta["tipo"] == "Altro" and dalle_cartelle.get("tipo"):
+        meta["tipo"] = dalle_cartelle["tipo"]
+    if not RE_CODICE.match(percorso.stem) and dalle_cartelle.get("sistema"):
+        meta["sistema"] = dalle_cartelle["sistema"]
+
+    contesto = " · ".join(filter(None, [meta["codice"], meta["titolo"], " / ".join(nomi_cartelle)]))
+
     with connessione() as con:
         meta["codice"], esistente = _codice_disponibile(con, meta["codice"], percorso)
 
@@ -246,45 +305,83 @@ def indicizza_file(percorso: Path, *, utente: str = "sistema", forza: bool = Fal
             con.execute("DELETE FROM chunk WHERE documento_id=?", (doc_id,))
             con.execute(
                 """UPDATE documenti SET codice=?, titolo=?, tipo=?, sistema=?, revisione=?,
-                       percorso=?, impronta=?, n_chunk=?, indicizzato_il=?, cartella=? WHERE id=?""",
+                       percorso=?, impronta=?, n_chunk=?, indicizzato_il=?, cartella=?,
+                       percorso_relativo=? WHERE id=?""",
                 (meta["codice"], meta["titolo"], meta["tipo"], meta["sistema"], meta["revisione"],
                  str(percorso), impronta, len(pezzi), adesso(),
-                 str(cartella) if cartella else None, doc_id),
+                 str(cartella) if cartella else None, percorso_relativo, doc_id),
             )
             azione = "reindicizzato"
         else:
             cur = con.execute(
                 """INSERT INTO documenti (codice, titolo, tipo, sistema, revisione, percorso,
-                                          impronta, n_chunk, indicizzato_il, cartella)
-                   VALUES (?,?,?,?,?,?,?,?,?,?)""",
+                                          impronta, n_chunk, indicizzato_il, cartella,
+                                          percorso_relativo)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
                 (meta["codice"], meta["titolo"], meta["tipo"], meta["sistema"], meta["revisione"],
-                 str(percorso), impronta, len(pezzi), adesso(), str(cartella) if cartella else None),
+                 str(percorso), impronta, len(pezzi), adesso(),
+                 str(cartella) if cartella else None, percorso_relativo),
             )
             doc_id = cur.lastrowid
             azione = "indicizzato"
 
         con.executemany(
-            "INSERT INTO chunk (documento_id, ordine, pagina, sezione, testo) VALUES (?,?,?,?,?)",
-            [(doc_id, p.ordine, p.pagina, p.sezione, p.testo) for p in pezzi],
+            """INSERT INTO chunk (documento_id, ordine, pagina, sezione, contesto, testo)
+               VALUES (?,?,?,?,?,?)""",
+            [(doc_id, p.ordine, p.pagina, p.sezione,
+              " · ".join(filter(None, [contesto, p.sezione])), p.testo) for p in pezzi],
         )
         registra_audit(con, utente=utente, azione=f"documento_{azione}", entita="documenti",
-                       entita_id=doc_id, dopo={**meta, "chunk": len(pezzi)}, origine="indicizzazione")
+                       entita_id=doc_id, dopo={**meta, "cartelle": percorso_relativo,
+                                               "chunk": len(pezzi)}, origine="indicizzazione")
 
-    return {"codice": meta["codice"], "titolo": meta["titolo"], "stato": azione, "chunk": len(pezzi)}
+    return {"codice": meta["codice"], "titolo": meta["titolo"], "stato": azione,
+            "chunk": len(pezzi), "cartelle": percorso_relativo}
 
 
-def rimuovi_mancanti(*, utente: str = "sistema") -> list[str]:
-    """Toglie dall'indice i documenti il cui file non è più raggiungibile."""
+def conta_indicizzabili(cartella: Path) -> dict:
+    """Quanti file utili contiene una cartella: serve a capire perché l'indice resta vuoto."""
+    cartella = Path(cartella)
+    if not cartella.exists():
+        return {"raggiungibile": False, "utili": 0, "esclusi": 0, "altri": 0}
+    utili = esclusi = altri = 0
+    for percorso in cartella.rglob("*"):
+        if not percorso.is_file():
+            continue
+        if percorso.suffix.lower() not in ESTENSIONI:
+            altri += 1
+        elif escluso(percorso):
+            esclusi += 1
+        else:
+            utili += 1
+    return {"raggiungibile": True, "utili": utili, "esclusi": esclusi, "altri": altri}
+
+
+def _sotto(percorso: Path, radici: list[Path]) -> bool:
+    for radice in radici:
+        try:
+            percorso.relative_to(radice)
+            return True
+        except ValueError:
+            continue
+    return False
+
+
+def rimuovi_mancanti(*, utente: str = "sistema", radici: list[Path] | None = None) -> list[str]:
+    """Toglie dall'indice i documenti non più raggiungibili o non più sotto le cartelle sorgente."""
     rimossi = []
     with connessione() as con:
         for d in con.execute("SELECT id, codice, percorso FROM documenti").fetchall():
-            if Path(d["percorso"]).exists():
+            percorso = Path(d["percorso"])
+            fuori_perimetro = radici is not None and not _sotto(percorso, radici)
+            if percorso.exists() and not fuori_perimetro:
                 continue
+            motivo = ("non più incluso nelle cartelle sorgente" if fuori_perimetro
+                      else "file non più presente nella cartella sorgente")
             con.execute("DELETE FROM chunk WHERE documento_id=?", (d["id"],))
             con.execute("DELETE FROM documenti WHERE id=?", (d["id"],))
             registra_audit(con, utente=utente, azione="documento_rimosso", entita="documenti",
-                           entita_id=d["id"], prima=dict(d), origine="indicizzazione",
-                           note="file non più presente nella cartella sorgente")
+                           entita_id=d["id"], prima=dict(d), origine="indicizzazione", note=motivo)
             rimossi.append(d["codice"])
     return rimossi
 
@@ -293,7 +390,7 @@ def indicizza_cartella(cartelle: list[Path] | Path | None = None, *, utente: str
                        forza: bool = False, pulisci: bool = True) -> list[dict]:
     """Indicizza, in sola lettura, tutte le cartelle sorgente configurate."""
     if cartelle is None:
-        radici = list(CARTELLE_DOCUMENTI)
+        radici = cartelle_documenti()
     elif isinstance(cartelle, (str, Path)):
         radici = [Path(cartelle)]
     else:
@@ -316,7 +413,9 @@ def indicizza_cartella(cartelle: list[Path] | Path | None = None, *, utente: str
             except Exception as exc:      # un file illeggibile non deve fermare il lotto
                 esiti.append({"codice": percorso.name, "stato": "errore", "errore": str(exc)})
 
+    # Quando si indicizza l'insieme completo, l'indice deve rispecchiare solo quelle cartelle.
     if pulisci:
-        for codice in rimuovi_mancanti(utente=utente):
+        perimetro = radici if cartelle is None else None
+        for codice in rimuovi_mancanti(utente=utente, radici=perimetro):
             esiti.append({"codice": codice, "stato": "rimosso"})
     return esiti

@@ -18,8 +18,8 @@ import threading
 import webbrowser
 from pathlib import Path
 
-from sgs_live.config import (CARTELLA_DOCUMENTI, CARTELLE_DOCUMENTI, INDIRIZZO, MODALITA,
-                             PORTA, RADICE, SOLA_LETTURA)
+from sgs_live.config import (INDIRIZZO, MODALITA, PORTA, RADICE, SOLA_LETTURA,
+                             cartella_caricamenti, cartelle_documenti)
 from sgs_live.db import adesso, connessione, inizializza, registra_audit
 from sgs_live.ingest import indicizza_cartella
 from sgs_live.tools import CAMPI_INDICATORE, CAMPI_NORMA
@@ -119,7 +119,7 @@ def main() -> int:
         indirizzo = f"http://{INDIRIZZO}:{PORTA}"
         print(f"SGS Live → {indirizzo}")
         print(f"  modalità: {MODALITA}" + ("  (sola lettura)" if SOLA_LETTURA else ""))
-        for cartella in CARTELLE_DOCUMENTI:
+        for cartella in cartelle_documenti():
             print(f"  cartella: {cartella}" + ("" if cartella.exists() else "  ⚠ non raggiungibile"))
         print("\nPer chiudere il programma: Ctrl+C in questa finestra.\n")
         if not argomenti.niente_browser:
@@ -137,9 +137,10 @@ def main() -> int:
 
     if argomenti.comando == "esempi":
         origine = RADICE / "dati_esempio"
-        CARTELLA_DOCUMENTI.mkdir(parents=True, exist_ok=True)
+        destinazione = cartella_caricamenti()
+        destinazione.mkdir(parents=True, exist_ok=True)
         for documento in origine.glob("*.md"):
-            shutil.copy2(documento, CARTELLA_DOCUMENTI / documento.name)
+            shutil.copy2(documento, destinazione / documento.name)
         print(f"norme importate:      {_importa(origine / 'norme.csv', 'norme', 'esempi')}")
         print(f"indicatori importati: {_importa(origine / 'indicatori.csv', 'indicatori', 'esempi')}")
         for esito in indicizza_cartella(utente="esempi"):

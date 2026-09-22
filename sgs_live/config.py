@@ -21,6 +21,9 @@ def _carica_dotenv() -> None:
 
 _carica_dotenv()
 
+import json
+
+
 def _booleano(nome: str, predefinito: str = "0") -> bool:
     return os.environ.get(nome, predefinito).strip().lower() in {"1", "true", "si", "sì", "yes", "on"}
 
@@ -42,6 +45,41 @@ CARTELLE_DOCUMENTI: list[Path] = [
 # in sola lettura). Per compatibilità resta esposta come CARTELLA_DOCUMENTI.
 CARTELLA_DOCUMENTI = Path(
     os.environ.get("SGS_CARTELLA_CARICAMENTI", "") or CARTELLE_DOCUMENTI[0]).resolve()
+
+# Le cartelle possono essere cambiate dalla dashboard: la scelta vive qui e ha
+# la precedenza su SGS_DOCUMENTI, così non serve toccare il file .env.
+PERCORSO_IMPOSTAZIONI = RADICE / "impostazioni.json"
+
+
+def _normalizza(percorso: str) -> Path:
+    return Path(os.path.expandvars(os.path.expanduser(percorso.strip().strip('"').strip("'")))).resolve()
+
+
+def cartelle_documenti() -> list[Path]:
+    """Cartelle sorgente attuali: quelle scelte dalla dashboard, altrimenti quelle di .env."""
+    try:
+        salvate = json.loads(PERCORSO_IMPOSTAZIONI.read_text(encoding="utf-8")).get("cartelle")
+        if salvate:
+            return [_normalizza(c) for c in salvate]
+    except (FileNotFoundError, ValueError, OSError):
+        pass
+    return list(CARTELLE_DOCUMENTI)
+
+
+def salva_cartelle(cartelle: list[str]) -> list[Path]:
+    puliti = [c.strip() for c in cartelle if c and c.strip()]
+    if not puliti:
+        raise ValueError("Indicare almeno una cartella.")
+    PERCORSO_IMPOSTAZIONI.write_text(
+        json.dumps({"cartelle": puliti}, ensure_ascii=False, indent=1), encoding="utf-8")
+    return [_normalizza(c) for c in puliti]
+
+
+def cartella_caricamenti() -> Path:
+    if os.environ.get("SGS_CARTELLA_CARICAMENTI"):
+        return _normalizza(os.environ["SGS_CARTELLA_CARICAMENTI"])
+    return cartelle_documenti()[0]
+
 
 # Sola lettura: nessuna scrittura nelle cartelle sorgente, caricamento da interfaccia disattivato.
 SOLA_LETTURA = _booleano("SGS_SOLA_LETTURA")

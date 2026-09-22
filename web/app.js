@@ -70,6 +70,36 @@ const fonteEtichetta = (c) => [c.codice, c.revisione ? `rev. ${c.revisione}` : n
   c.pagina ? `pag. ${c.pagina}` : null, c.sezione ? `sez. ${c.sezione}` : null]
   .filter(Boolean).join(" · ");
 
+/* Evidenzia nell'estratto le parole della domanda, per trovare subito il punto. */
+function evidenzia(testo, domanda) {
+  const parole = (domanda || "").toLowerCase().match(/[0-9a-zà-ÿ_]{4,}/g) || [];
+  const distinte = [...new Set(parole)].filter((p) => !["della", "dello", "delle", "degli", "documento", "documenti", "mostrami"].includes(p));
+  if (!distinte.length) return esc(testo);
+  const modello = new RegExp(`(${distinte.map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})`, "gi");
+  return esc(testo).replace(modello, "<mark>$1</mark>");
+}
+
+function titoloAggiuntivo(c) {
+  const titolo = (c.titolo || "").trim();
+  if (!titolo || titolo === c.codice || c.codice.includes(titolo)) return "";
+  return ` — ${esc(titolo)}`;
+}
+
+function schedaFonte(c, domanda, aperta) {
+  const testo = (c.testo || c.evidenza || "")
+    .replace(/<<|>>/g, "")
+    .replace(/^#{1,6}\s*/gm, "")       // titoli Markdown dei documenti di testo
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  return `<details class="fonte"${aperta ? " open" : ""}>
+    <summary>${c.percorso_relativo ? `<span class="cartella">${esc(c.percorso_relativo)}</span>` : ""}` +
+    `<strong>${esc(c.codice)}</strong>${titoloAggiuntivo(c)}` +
+    `<div class="riferimento">${esc(fonteEtichetta(c).replace(c.codice, "").replace(/^ · /, "")) || "&nbsp;"}</div></summary>` +
+    `<div class="estratto">${evidenzia(testo, domanda)}</div>` +
+    (c.documento_id ? `<div class="azioni-fonte"><a href="/api/documenti/${c.documento_id}/file" download>Apri il documento originale</a></div>` : "") +
+    "</details>";
+}
+
 /* -------------------------------------------------------------- schede -- */
 $$("#schede button").forEach((b) => b.addEventListener("click", () => {
   $$("#schede button").forEach((x) => x.classList.remove("attivo"));
@@ -100,7 +130,7 @@ async function caricaStato() {
 }
 
 /* ----------------------------------------------------------- assistente -- */
-function aggiungiMessaggio(ruolo, testo, citazioni = []) {
+function aggiungiMessaggio(ruolo, testo, citazioni = [], domanda = "") {
   const vuoto = $("#messaggi .vuoto");
   if (vuoto) vuoto.remove();
   const div = document.createElement("div");
@@ -109,22 +139,12 @@ function aggiungiMessaggio(ruolo, testo, citazioni = []) {
     `<div class="autore">${ruolo === "utente" ? esc(stato.utente || "Operatore") : "SGS Live"}</div>` +
     `<div class="bolla">${ruolo === "utente" ? `<p>${esc(testo)}</p>` : md(testo)}` +
     (citazioni.length
-      ? `<div class="fonti">${citazioni.map((c) =>
-          `<span class="fonte" title="${esc((c.evidenza || "").replace(/<<|>>/g, ""))}">${esc(fonteEtichetta(c))}</span>`).join("")}</div>`
+      ? `<div class="fonti"><div class="titolo-fonti">Estratti dai documenti citati (${citazioni.length})</div>` +
+        citazioni.map((c, i) => schedaFonte(c, domanda, i === 0)).join("") + "</div>"
       : "") + "</div>";
   $("#messaggi").appendChild(div);
   $("#messaggi").scrollTop = $("#messaggi").scrollHeight;
   return div;
-}
-
-function rispostaRicerca(risultati) {
-  if (!risultati.length) return "Nessun passaggio corrispondente nei documenti indicizzati.";
-  return risultati.map((r) => {
-    const rif = [r.codice, r.revisione ? `rev. ${r.revisione}` : null,
-                 r.pagina ? `pag. ${r.pagina}` : null, r.sezione ? `sez. ${r.sezione}` : null]
-      .filter(Boolean).join(" · ");
-    return `### ${rif}\n${r.testo.slice(0, 1200)}${r.testo.length > 1200 ? " […]" : ""}`;
-  }).join("\n\n");
 }
 
 async function invia() {
@@ -140,7 +160,11 @@ async function invia() {
     try {
       const r = await api("/api/ricerca", { method: "POST", body: JSON.stringify({ domanda }) });
       attesa.remove();
-      aggiungiMessaggio("assistente", rispostaRicerca(r.risultati), r.risultati);
+      const quanti = r.risultati.length;
+      aggiungiMessaggio("assistente", quanti
+        ? `Trovati **${quanti}** passaggi pertinenti. Sotto trovi il testo di ciascuno, con la cartella di provenienza e il riferimento.`
+        : "Nessun passaggio corrispondente nei documenti indicizzati. Prova con parole diverse, oppure controlla che il documento sia stato indicizzato.",
+        r.risultati, domanda);
     } catch (e) {
       attesa.remove();
       aggiungiMessaggio("assistente", `**Errore:** ${esc(e.message)}`);
@@ -152,7 +176,7 @@ async function invia() {
     const r = await api("/api/chat", { method: "POST", body: JSON.stringify(
       { domanda, sessione: stato.sessione, utente: stato.utente }) });
     attesa.remove();
-    aggiungiMessaggio("assistente", r.testo, r.citazioni || []);
+    aggiungiMessaggio("assistente", r.testo, r.citazioni || [], domanda);
     if (r.proposte && r.proposte.length) {
       const nota = r.proposte.map((p) => `- **Proposta n. ${p.id}** — ${p.riepilogo}`).join("\n");
       aggiungiMessaggio("assistente",
@@ -379,14 +403,17 @@ $("#filtro-sistema-ips").addEventListener("change", caricaIndicatori);
 async function caricaDocumenti() {
   const elenco = await api("/api/documenti");
   $("#tabella-documenti").innerHTML = elenco.length ? `<table><thead><tr>
-      <th>Codice</th><th>Titolo</th><th>Tipo</th><th>Sist.</th><th>Rev.</th>
+      <th>Cartella</th><th>Codice</th><th>Titolo</th><th>Tipo</th><th>Sist.</th><th>Rev.</th>
       <th>Passaggi</th><th>Indicizzato il</th><th></th></tr></thead><tbody>` +
-    elenco.map((d) => `<tr><td><strong>${esc(d.codice)}</strong></td><td>${esc(d.titolo)}</td>
+    elenco.map((d) => `<tr>
+      <td>${d.percorso_relativo ? `<span class="pillola">${esc(d.percorso_relativo)}</span>` : "—"}</td>
+      <td><strong>${esc(d.codice)}</strong></td><td>${esc(d.titolo)}</td>
       <td>${esc(d.tipo)}</td><td>${esc(d.sistema)}</td><td>${esc(d.revisione || "—")}</td>
       <td>${d.n_chunk}</td><td>${esc((d.indicizzato_il || "").slice(0, 16).replace("T", " "))}</td>
       <td><a href="/api/documenti/${d.id}/file" download><button>Apri</button></a></td></tr>`).join("") +
     "</tbody></table>"
-    : '<div class="vuoto">Nessun documento indicizzato. Carica un file o copia i documenti nella cartella e premi «Reindicizza».</div>';
+    : '<div class="vuoto">Nessun documento nell\'indice.<br>Controlla qui sopra che la cartella sia ' +
+      'quella giusta, poi premi <strong>«Salva e indicizza»</strong> (o «Reindicizza cartelle»).</div>';
 }
 
 $("#btn-carica").addEventListener("click", async () => {
@@ -404,17 +431,60 @@ $("#btn-carica").addEventListener("click", async () => {
   } catch (e) { alert(e.message); } finally { $("#btn-carica").disabled = false; }
 });
 
-$("#btn-reindicizza").addEventListener("click", async () => {
-  $("#btn-reindicizza").disabled = true;
-  $("#btn-reindicizza").textContent = "Indicizzazione…";
+function riepilogoCartelle(cartelle) {
+  return "<table><thead><tr><th>Cartella</th><th>Stato</th><th>Da indicizzare</th>" +
+    "<th>Ignorati</th><th>Altri formati</th></tr></thead><tbody>" +
+    cartelle.map((k) => `<tr><td><code>${esc(k.percorso)}</code></td>` +
+      `<td>${k.raggiungibile ? "raggiungibile"
+        : '<strong style="color:var(--intervento)">non raggiungibile</strong>'}</td>` +
+      `<td><strong>${k.utili}</strong></td><td>${k.esclusi}</td><td>${k.altri}</td></tr>`).join("") +
+    "</tbody></table>";
+}
+
+$("#btn-salva-cartelle").addEventListener("click", async () => {
+  if (!richiediOperatore()) return;
+  const cartelle = $("#cartelle").value.split("\n").map((c) => c.trim()).filter(Boolean);
+  if (!cartelle.length) { alert("Indicare almeno una cartella."); return; }
+  $("#btn-salva-cartelle").disabled = true;
+  try {
+    const r = await api("/api/cartelle", { method: "POST", body: JSON.stringify({ cartelle, utente: stato.utente }) });
+    $("#esito-cartelle").innerHTML = riepilogoCartelle(r.cartelle);
+    const utili = r.cartelle.reduce((t, k) => t + k.utili, 0);
+    if (!utili) {
+      $("#esito-cartelle").innerHTML +=
+        '<div style="margin-top:8px"><strong>Nessun file da indicizzare trovato.</strong> ' +
+        "Controlla che il percorso sia quello giusto e che contenga file PDF, Word o Excel.</div>";
+      return;
+    }
+    stato.configurazione = await api("/api/configurazione");
+    await avviaIndicizzazione();
+  } catch (e) { alert(e.message); }
+  finally { $("#btn-salva-cartelle").disabled = false; }
+});
+
+async function avviaIndicizzazione() {
+  const bottone = $("#btn-reindicizza");
+  bottone.disabled = true;
+  const etichetta = bottone.textContent;
+  bottone.textContent = "Indicizzazione in corso…";
   try {
     const r = await api("/api/indicizza", { method: "POST", body: JSON.stringify({ utente: stato.utente || "operatore" }) });
     const riepilogo = r.esiti.reduce((acc, e) => { acc[e.stato] = (acc[e.stato] || 0) + 1; return acc; }, {});
-    alert(`File esaminati: ${r.totale}\n` + Object.entries(riepilogo).map(([k, v]) => `${k}: ${v}`).join("\n"));
+    const righe = Object.entries(riepilogo).map(([k, v]) => `${v} ${k.replace("_", " ")}`).join(", ");
+    $("#esito-cartelle").innerHTML +=
+      `<div style="margin-top:8px"><strong>Indicizzazione completata.</strong> File esaminati: ${r.totale} — ${esc(righe)}.</div>`;
+    const errori = r.esiti.filter((e) => e.stato === "errore" || e.stato === "vuoto");
+    if (errori.length) {
+      $("#esito-cartelle").innerHTML += "<div style=\"margin-top:6px\">File non letti:<ul>" +
+        errori.slice(0, 10).map((e) => `<li><code>${esc(e.codice)}</code> — ${esc(e.errore || e.avviso || e.stato)}</li>`).join("") +
+        "</ul></div>";
+    }
     await Promise.all([caricaDocumenti(), caricaStato()]);
   } catch (e) { alert(e.message); }
-  finally { $("#btn-reindicizza").disabled = false; $("#btn-reindicizza").textContent = "Reindicizza cartelle"; }
-});
+  finally { bottone.disabled = false; bottone.textContent = etichetta; }
+}
+
+$("#btn-reindicizza").addEventListener("click", avviaIndicizzazione);
 
 /* -------------------------------------------------------------- audit -- */
 async function caricaAudit() {
@@ -448,13 +518,14 @@ function applicaConfigurazione(c) {
   $("#filtro-sistema-ips").innerHTML = '<option value="">Tutti i sistemi</option>' +
     (c.sistemi || []).map((s) => `<option>${s}</option>`).join("");
 
-  const cartelle = (c.cartelle_documenti || []).map((k) =>
-    `<li><code>${esc(k.percorso)}</code> — ${k.raggiungibile
-      ? "raggiungibile" : '<strong style="color:var(--intervento)">non raggiungibile</strong>'}</li>`).join("");
-  $("#info-cartelle").innerHTML =
-    `<strong>Cartelle sorgente (lette, mai modificate):</strong><ul style="margin:6px 0">${cartelle}</ul>` +
-    `<div>Formati indicizzati: ${esc((c.estensioni || []).join(" "))} · ` +
-    `esclusioni: <code>${esc((c.esclusioni || []).join(" ; "))}</code></div>`;
+  $("#cartelle").value = (c.cartelle_documenti || []).map((k) => k.percorso).join("\n");
+  $("#esito-cartelle").innerHTML = (c.cartelle_documenti || []).some((k) => !k.raggiungibile)
+    ? '<strong style="color:var(--intervento)">Attenzione: una cartella non è raggiungibile.</strong> ' +
+      "Se è un'unità di rete, verifica che sia collegata."
+    : "";
+  $("#info-formati").innerHTML =
+    `Formati letti: ${esc((c.estensioni || []).join(" "))}<br>` +
+    `File e cartelle sempre ignorati: <code>${esc((c.esclusioni || []).join(" ; "))}</code>`;
 
   if (c.sola_lettura) {
     $("#gruppo-caricamento").hidden = true;
@@ -463,6 +534,10 @@ function applicaConfigurazione(c) {
   if (c.modalita === "locale") {
     $('#schede button[data-scheda="assistente"]').textContent = "Ricerca documentale";
     $("#nota-modalita").hidden = false;
+    $("#nota-modalita").innerHTML =
+      "<strong>Elaborazione interamente locale.</strong> Nessun dato esce da questo computer: " +
+      "la ricerca restituisce i passaggi dei documenti con la cartella di provenienza e il " +
+      "riferimento. Per fare domande scritte in linguaggio naturale serve la modalità assistita.";
     $("#domanda").placeholder = "Parole chiave o frase da cercare nei documenti indicizzati…";
     $("#btn-invia").textContent = "Cerca";
     $$(".suggerimenti button").forEach((b, i) => { if (i > 1) b.remove(); });

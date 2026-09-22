@@ -11,7 +11,7 @@ esplicita dell'operatore e tracciabilità completa.
 |---|---|
 | Indicizzazione | Manuale, Procedure, Istruzioni Operative e Registri in PDF, DOCX, XLSX/XLSM, TXT, MD, letti da una o più cartelle indicate dall'utente |
 | Ricerca documentale | Risponde citando codice documento, revisione, pagina e sezione (per i registri Excel, il foglio) |
-| Estratti letterali | Restituisce il testo originale del passaggio, non una parafrasi |
+| Estratti letterali | Sotto ogni risposta compaiono i passaggi effettivi dei documenti, con le parole della domanda evidenziate, la cartella di provenienza e il collegamento al file originale |
 | Registro normative | TGV_MSGS_RGS_01: riferimenti, applicabilità per sistema, stato, impatto, azioni, scadenze |
 | Indicatori IPS | TGV_PRC_06_RGS_02: anagrafica, soglie di Allarme/Intervento, misure per periodo, stato automatico rispetto alle soglie (TGV_PRC_11) |
 | Proposte di modifica | L'assistente non scrive: prepara proposte con anteprima delle differenze, che l'operatore conferma o rifiuta |
@@ -53,8 +53,10 @@ La prima volta prepara tutto da solo e poi ti fa tre domande:
 Poi il browser si apre da solo su `http://127.0.0.1:8770`.
 
 **4. Prima indicizzazione**
-Vai su **Documenti → Reindicizza cartelle** e aspetta. Da quel momento puoi cercare.
-Ripeti ogni volta che i documenti cambiano.
+Vai nella scheda **Documenti**: lì c'è il riquadro con le cartelle da leggere (si cambiano in
+qualsiasi momento, una per riga) e il pulsante **«Salva e indicizza»**. Premilo e aspetta: il
+programma dice quanti file ha trovato in ciascuna cartella e quanti ne ha letti. Finché non lo
+fai, il contatore «Documenti indicizzati» resta a zero. Ripeti ogni volta che i documenti cambiano.
 
 Per chiudere: `Ctrl+C` nella finestra nera, oppure chiudila.
 Per rifare le domande iniziali: `python sgs.py configura`.
@@ -101,7 +103,7 @@ SGS_SOLA_LETTURA=1
 
 | Variabile | Effetto |
 |---|---|
-| `SGS_DOCUMENTI` | Cartelle da indicizzare, separate da `;`, ricorsive |
+| `SGS_DOCUMENTI` | Cartelle da indicizzare, separate da `;`, ricorsive. È il valore iniziale: si cambia poi dalla scheda Documenti, e la scelta viene salvata in `impostazioni.json`, che ha la precedenza |
 | `SGS_SOLA_LETTURA=1` | Disattiva il caricamento di file dalla dashboard: nulla viene mai scritto nelle cartelle sorgente |
 | `SGS_ESCLUDI` | Glob di file e cartelle da non indicizzare mai — serve a tenere fuori dall'indice i documenti con dati personali o sanitari (default: `~$*;*.tmp;*.bak;.*;Archivio storico*;Riservato*;Dati personali*;*Bozza*`) |
 | `SGS_MODALITA` | `assistito` (ricerca locale + risposte del modello) oppure `locale` (nessuna chiamata esterna) |
@@ -109,11 +111,30 @@ SGS_SOLA_LETTURA=1
 | `SGS_DB` | File SQLite con indice, registri e log di tracciabilità |
 | `SGS_INDIRIZZO` | `127.0.0.1` di default: raggiungibile solo dal PC su cui gira |
 
+### I nomi delle cartelle sono informazione
+
+L'organizzazione dell'archivio viene letta come contenuto, non come semplice posizione:
+
+- il percorso relativo (es. `03 - Istruzioni Operative/Ferrovia Genova Casella`) è indicizzato
+  insieme al testo, quindi una domanda che nomina una cartella («i rilievi dell'audit 2026»)
+  recupera i documenti che stanno lì dentro;
+- quando il nome del file non dice il tipo o il sistema, li ricava dai nomi delle cartelle:
+  `Procedure` → Procedura, `Istruzioni Operative` → Istruzione Operativa, `Registri` → Registro,
+  `Metropolitana` → MET, `Ferrovia Genova Casella` → FGC, `Principe Granarolo` → FPG,
+  `Filovia` → FIL. La numerazione iniziale (`01 - `, `02_`) viene ignorata nel confronto;
+- l'assistente può restringere la ricerca a una cartella, e ogni citazione mostra da quale
+  cartella arriva il passaggio.
+
+I termini riconosciuti stanno in `SISTEMA_DA_CARTELLA` e `TIPO_DA_CARTELLA` in
+`sgs_live/ingest.py`: vanno adeguati alla nomenclatura effettiva dell'archivio.
+
 Codice, tipo, sistema e revisione sono dedotti dal nome file secondo la naming convention del SGS —
 `TGV_PRC_11 - Monitoraggio prestazioni rev 02.pdf`, `MET_PRC_06_RGS_01 - Hazard Log rev 03.xlsx`.
 Se due file diversi producono lo stesso codice, il secondo riceve un suffisso (`TGV_PRC_11#2`).
-Premere **Reindicizza cartelle** dopo ogni revisione: l'indice segue l'impronta dei file, rileva le
-modifiche e toglie dall'indice i documenti non più presenti.
+Le cartelle si cambiano dalla dashboard (scheda Documenti) oppure in `.env`. Cambiandole, i
+documenti che non appartengono più alle cartelle scelte escono dall'indice, con registrazione in
+audit. Premere **Salva e indicizza** dopo ogni revisione: l'indice segue l'impronta dei file,
+rileva le modifiche e toglie dall'indice i documenti non più presenti.
 
 I registri Excel (Hazard Log, registro IPS, registro NC, prescrizioni ANSFISA) sono indicizzati un
 foglio alla volta, e la citazione riporta il nome del foglio.

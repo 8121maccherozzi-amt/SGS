@@ -7,3 +7,4 @@ __pycache__/
 documenti/*
 !documenti/.gitkeep
 .venv/
+impostazioni.json

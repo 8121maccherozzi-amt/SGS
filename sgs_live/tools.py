@@ -40,6 +40,11 @@ STRUMENTI: list[dict[str, Any]] = [
                 "tipo_documento": {"type": "string",
                                     "description": "Es. Procedura, Manuale, Registro, Istruzione Operativa."},
                 "codice_documento": {"type": "string", "description": "Es. TGV_PRC_11."},
+                "cartella": {"type": "string",
+                              "description": "Nome (anche parziale) della cartella in cui cercare. "
+                                             "I nomi delle cartelle dell'archivio indicano il tipo "
+                                             "di documento, il sistema o l'anno: usarli quando la "
+                                             "domanda li richiama."},
                 "massimo": {"type": "integer", "description": "Numero di passaggi (default 6, max 12)."},
             },
             "required": ["domanda"],
@@ -186,8 +191,11 @@ NOMI_SCRITTURA = {"proponi_norma", "proponi_indicatore", "proponi_misura"}
 # ---------------------------------------------------------------- lettura ----
 
 def _intestazione(r: dict) -> str:
-    """Riferimento citabile di un passaggio: codice, titolo, revisione, pagina, sezione."""
-    parti = [f"{r['codice']} - {r['titolo']}"]
+    """Riferimento citabile: cartella, codice, titolo, revisione, pagina, sezione."""
+    parti = []
+    if r.get("percorso_relativo"):
+        parti.append(f"[{r['percorso_relativo']}]")
+    parti.append(f"{r['codice']} - {r['titolo']}")
     if r.get("revisione"):
         parti.append(f"rev. {r['revisione']}")
     if r.get("pagina"):
@@ -200,7 +208,8 @@ def _intestazione(r: dict) -> str:
 def _cerca(par: dict) -> tuple[str, list[dict]]:
     risultati = cerca(
         par["domanda"], sistema=par.get("sistema"), tipo_documento=par.get("tipo_documento"),
-        codice_documento=par.get("codice_documento"), massimo=min(int(par.get("massimo", 6)), 12),
+        codice_documento=par.get("codice_documento"), cartella=par.get("cartella"),
+        massimo=min(int(par.get("massimo", 6)), 12),
     )
     if not risultati:
         return ("Nessun passaggio trovato nei documenti indicizzati. Non inventare il contenuto: "
@@ -209,9 +218,10 @@ def _cerca(par: dict) -> tuple[str, list[dict]]:
     for r in risultati:
         voci.append(f"[chunk_id={r['chunk_id']}] {_intestazione(r)}\n{r['testo'][:1600]}")
     citazioni = [
-        {"chunk_id": r["chunk_id"], "codice": r["codice"], "titolo": r["titolo"],
-         "pagina": r["pagina"], "sezione": r["sezione"], "revisione": r["revisione"],
-         "evidenza": r["evidenza"]}
+        {"chunk_id": r["chunk_id"], "documento_id": r["documento_id"], "codice": r["codice"],
+         "titolo": r["titolo"], "pagina": r["pagina"], "sezione": r["sezione"],
+         "revisione": r["revisione"], "percorso_relativo": r["percorso_relativo"],
+         "evidenza": r["evidenza"], "testo": r["testo"][:2500]}
         for r in risultati
     ]
     return "\n\n---\n\n".join(voci), citazioni
@@ -221,13 +231,16 @@ def _leggi_estratto(par: dict) -> tuple[str, list[dict]]:
     dato = estratto(int(par["chunk_id"]), contesto=min(int(par.get("contesto", 1)), 3))
     if not dato:
         return "Passaggio non trovato.", []
-    citazione = {k: dato[k] for k in ("chunk_id", "codice", "titolo", "pagina", "sezione", "revisione")}
+    citazione = {k: dato[k] for k in ("chunk_id", "documento_id", "codice", "titolo", "pagina",
+                                      "sezione", "revisione", "percorso_relativo")}
     citazione["evidenza"] = dato["testo"][:300]
+    citazione["testo"] = dato["testo"][:2500]
     return f"{_intestazione(dato)}\n\n{dato['testo']}", [citazione]
 
 
 def _elenca_documenti(par: dict) -> tuple[str, list[dict]]:
-    sql = "SELECT codice, titolo, tipo, sistema, revisione, n_chunk FROM documenti WHERE 1=1"
+    sql = ("SELECT codice, titolo, tipo, sistema, revisione, percorso_relativo AS cartelle, "
+           "n_chunk FROM documenti WHERE 1=1")
     p: list[Any] = []
     if par.get("sistema"):
         sql += " AND sistema=?"

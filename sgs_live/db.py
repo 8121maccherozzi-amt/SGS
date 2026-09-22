@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS documenti (
     n_chunk INTEGER NOT NULL DEFAULT 0,
     indicizzato_il TEXT,
     cartella TEXT,
+    percorso_relativo TEXT,
     note TEXT
 );
 
@@ -43,22 +44,12 @@ CREATE TABLE IF NOT EXISTS chunk (
     ordine INTEGER NOT NULL,
     pagina INTEGER,
     sezione TEXT,
+    -- Codice, titolo e nomi delle cartelle che contengono il documento: i nomi
+    -- delle cartelle sono informazione, non solo posizione, e vanno cercabili.
+    contesto TEXT,
     testo TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_chunk_doc ON chunk(documento_id);
-
-CREATE VIRTUAL TABLE IF NOT EXISTS chunk_fts USING fts5(
-    testo, sezione,
-    content='chunk', content_rowid='id',
-    tokenize="unicode61 remove_diacritics 2"
-);
-
-CREATE TRIGGER IF NOT EXISTS chunk_ai AFTER INSERT ON chunk BEGIN
-    INSERT INTO chunk_fts(rowid, testo, sezione) VALUES (new.id, new.testo, new.sezione);
-END;
-CREATE TRIGGER IF NOT EXISTS chunk_ad AFTER DELETE ON chunk BEGIN
-    INSERT INTO chunk_fts(chunk_fts, rowid, testo, sezione) VALUES('delete', old.id, old.testo, old.sezione);
-END;
 
 -- TGV_MSGS_RGS_01 - Registro normative di riferimento
 CREATE TABLE IF NOT EXISTS norme (
@@ -173,7 +164,51 @@ def connessione() -> sqlite3.Connection:
 
 
 # Colonne aggiunte dopo la prima installazione: applicate a ogni avvio se mancanti.
-MIGRAZIONI = [("documenti", "cartella", "TEXT")]
+MIGRAZIONI = [
+    ("documenti", "cartella", "TEXT"),
+    ("documenti", "percorso_relativo", "TEXT"),
+    ("chunk", "contesto", "TEXT"),
+]
+
+CAMPI_FTS = ("testo", "sezione", "contesto")
+
+INDICE_FTS = f"""
+CREATE VIRTUAL TABLE chunk_fts USING fts5(
+    {', '.join(CAMPI_FTS)},
+    content='chunk', content_rowid='id',
+    tokenize="unicode61 remove_diacritics 2"
+);
+CREATE TRIGGER chunk_ai AFTER INSERT ON chunk BEGIN
+    INSERT INTO chunk_fts(rowid, {', '.join(CAMPI_FTS)})
+    VALUES (new.id, {', '.join('new.' + c for c in CAMPI_FTS)});
+END;
+CREATE TRIGGER chunk_ad AFTER DELETE ON chunk BEGIN
+    INSERT INTO chunk_fts(chunk_fts, rowid, {', '.join(CAMPI_FTS)})
+    VALUES ('delete', old.id, {', '.join('old.' + c for c in CAMPI_FTS)});
+END;
+CREATE TRIGGER chunk_au AFTER UPDATE ON chunk BEGIN
+    INSERT INTO chunk_fts(chunk_fts, rowid, {', '.join(CAMPI_FTS)})
+    VALUES ('delete', old.id, {', '.join('old.' + c for c in CAMPI_FTS)});
+    INSERT INTO chunk_fts(rowid, {', '.join(CAMPI_FTS)})
+    VALUES (new.id, {', '.join('new.' + c for c in CAMPI_FTS)});
+END;
+"""
+
+
+def _allinea_indice(con: sqlite3.Connection) -> None:
+    """L'indice di ricerca è ricostruibile: se le colonne cambiano lo si rifà da zero."""
+    colonne = {r["name"] for r in con.execute("PRAGMA table_info(chunk_fts)")}
+    if colonne >= set(CAMPI_FTS):
+        return
+    con.executescript("""
+        DROP TRIGGER IF EXISTS chunk_ai;
+        DROP TRIGGER IF EXISTS chunk_ad;
+        DROP TRIGGER IF EXISTS chunk_au;
+        DROP TABLE IF EXISTS chunk_fts;
+    """)
+    con.executescript(INDICE_FTS)
+    con.execute(f"""INSERT INTO chunk_fts(rowid, {', '.join(CAMPI_FTS)})
+                    SELECT id, {', '.join(CAMPI_FTS)} FROM chunk""")
 
 
 def inizializza() -> None:
@@ -183,6 +218,7 @@ def inizializza() -> None:
             presenti = {r["name"] for r in con.execute(f"PRAGMA table_info({tabella})")}
             if colonna not in presenti:
                 con.execute(f"ALTER TABLE {tabella} ADD COLUMN {colonna} {tipo}")
+        _allinea_indice(con)
 
 
 def righe(sql: str, parametri: Iterable[Any] = ()) -> list[dict]:

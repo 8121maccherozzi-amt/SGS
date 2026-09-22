@@ -53,7 +53,8 @@ def _query_fts(termini: list[str]) -> str:
 
 
 def cerca(domanda: str, *, sistema: str | None = None, tipo_documento: str | None = None,
-          codice_documento: str | None = None, massimo: int = 6) -> list[dict]:
+          codice_documento: str | None = None, cartella: str | None = None,
+          massimo: int = 6) -> list[dict]:
     """Restituisce i passaggi piu' pertinenti con riferimento a documento/pagina/sezione."""
     termini = _termini(domanda)
     if not termini:
@@ -69,12 +70,16 @@ def cerca(domanda: str, *, sistema: str | None = None, tipo_documento: str | Non
     if codice_documento:
         condizioni.append("d.codice LIKE ?")
         parametri.append(f"%{codice_documento}%")
+    if cartella:
+        condizioni.append("(d.percorso_relativo LIKE ? OR d.cartella LIKE ?)")
+        parametri += [f"%{cartella}%", f"%{cartella}%"]
     parametri.append(massimo)
 
     sql = f"""
         SELECT c.id AS chunk_id, c.pagina, c.sezione, c.testo,
-               d.codice, d.titolo, d.tipo, d.sistema, d.revisione,
-               bm25(chunk_fts, 4.0, 2.0) AS punteggio,
+               d.id AS documento_id, d.codice, d.titolo, d.tipo, d.sistema, d.revisione,
+               d.percorso_relativo, d.cartella,
+               bm25(chunk_fts, 4.0, 2.0, 1.5) AS punteggio,
                snippet(chunk_fts, 0, '<<', '>>', ' … ', 24) AS evidenza
         FROM chunk_fts
         JOIN chunk c ON c.id = chunk_fts.rowid
@@ -95,7 +100,8 @@ def estratto(chunk_id: int, *, contesto: int = 1) -> dict | None:
     """Testo integrale di un passaggio, con i chunk adiacenti come contesto."""
     with connessione() as con:
         base = con.execute(
-            """SELECT c.*, d.codice, d.titolo, d.revisione, d.sistema, d.tipo
+            """SELECT c.*, d.id AS documento_id, d.codice, d.titolo, d.revisione, d.sistema,
+                      d.tipo, d.percorso_relativo
                FROM chunk c JOIN documenti d ON d.id = c.documento_id WHERE c.id=?""",
             (chunk_id,),
         ).fetchone()
@@ -110,5 +116,6 @@ def estratto(chunk_id: int, *, contesto: int = 1) -> dict | None:
         "codice": base["codice"], "titolo": base["titolo"], "revisione": base["revisione"],
         "sistema": base["sistema"], "tipo": base["tipo"], "pagina": base["pagina"],
         "sezione": base["sezione"], "chunk_id": chunk_id,
+        "documento_id": base["documento_id"], "percorso_relativo": base["percorso_relativo"],
         "testo": "\n\n".join(v["testo"] for v in vicini),
     }

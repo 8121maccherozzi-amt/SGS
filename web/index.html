@@ -98,7 +98,16 @@
 
   <!-- DOCUMENTI -->
   <section class="pannello" id="pannello-documenti">
-    <div class="avviso" id="info-cartelle"></div>
+    <div class="avviso">
+      <strong>Cartelle da cui leggere i documenti</strong> — una per riga. Vengono lette e mai
+      modificate. Vanno bene anche le cartelle di rete (es. <code>S:\SGS\Documentazione</code>
+      oppure <code>\\srv-file\SGS</code>).
+      <textarea id="cartelle" rows="3" spellcheck="false"
+                style="width:100%;margin:8px 0;font-family:ui-monospace,monospace;font-size:13px"></textarea>
+      <button class="primario" id="btn-salva-cartelle">Salva e indicizza</button>
+      <div id="esito-cartelle" style="margin-top:10px"></div>
+      <div id="info-formati" style="margin-top:8px;font-size:12.5px;color:var(--testo-tenue)"></div>
+    </div>
     <div class="avviso" id="nota-sola-lettura" hidden><strong>Modalità sola lettura.</strong>
       SGS Live non scrive nelle cartelle sorgente: depositare i file dalla condivisione e premere
       «Reindicizza cartelle».</div>
