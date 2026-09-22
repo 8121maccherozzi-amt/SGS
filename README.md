@@ -12,7 +12,7 @@ esplicita dell'operatore e tracciabilità completa.
 | Indicizzazione | Manuale, Procedure, Istruzioni Operative e Registri in PDF, DOCX, XLSX/XLSM, TXT, MD, letti da una o più cartelle indicate dall'utente |
 | Ricerca documentale | Risponde citando codice documento, revisione, pagina e sezione (per i registri Excel, il foglio) |
 | Estratti letterali | Sotto ogni risposta compaiono i passaggi effettivi dei documenti, con le parole della domanda evidenziate, la cartella di provenienza e il collegamento al file originale |
-| Registro normative | TGV_MSGS_RGS_01: riferimenti, applicabilità per sistema, stato, impatto, azioni, scadenze |
+| Registro normative | TGV_MSGS_RGS_01: riferimenti, applicabilità per sistema, stato, impatto, azioni, scadenze. Si popola importando il registro esistente (Excel, Word o CSV) già presente nell'archivio |
 | Indicatori IPS | TGV_PRC_06_RGS_02: anagrafica, soglie di Allarme/Intervento, misure per periodo, stato automatico rispetto alle soglie (TGV_PRC_11) |
 | Proposte di modifica | L'assistente non scrive: prepara proposte con anteprima delle differenze, che l'operatore conferma o rifiuta |
 | Tracciabilità | Ogni scrittura registrata con operatore, data/ora, valore precedente e successivo, origine |
@@ -172,6 +172,21 @@ naturale richiede un modello, e il modello è remoto. Se la risposta conversazio
 dato non può uscire, l'alternativa è un modello eseguito in azienda (Ollama o simili, su GPU
 dedicata) — `sgs_live/agent.py` è l'unico file da adattare, a prezzo di una qualità inferiore nella
 comprensione della domanda e nella redazione della risposta.
+
+## Popolare il registro normative dal registro esistente
+
+Il registro ufficiale resta il documento del SGS: da lì se ne travasa il contenuto nella tabella
+interrogabile. Scheda **Registro norme → «Importa dal registro SGS»**:
+
+1. si sceglie il documento (i registri di normative sono proposti per primi, con ★);
+2. il programma legge la tabella, salta le righe di intestazione del documento e propone
+   l'associazione tra le colonne del file e i campi del registro;
+3. si controlla l'associazione sull'anteprima delle prime righe e si conferma.
+
+Le date vengono normalizzate (`16/07/2019` → `2019-07-16`), le righe senza riferimento normativo
+vengono saltate, una voce già presente viene aggiornata anziché duplicata, e ogni riga scritta
+finisce nel registro di tracciabilità con l'indicazione del documento di origine. Ripetendo
+l'importazione dopo una revisione del registro, si riallinea la tabella.
 
 ## Esempi di richiesta
 

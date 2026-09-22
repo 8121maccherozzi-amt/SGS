@@ -17,6 +17,7 @@ from . import agent, tools
 from .config import (CARTELLA_WEB, ESCLUSIONI, MODALITA, MODELLO, SISTEMI, SOLA_LETTURA,
                      TIPI_DOCUMENTO, cartella_caricamenti, cartelle_documenti, salva_cartelle)
 from .db import adesso, connessione, inizializza, registra_audit, riga, righe, stato_indicatore
+from .importa import anteprima as anteprima_registro, importa_norme
 from .ingest import ESTENSIONI, conta_indicizzabili, indicizza_cartella
 from .retrieval import cerca as cerca_passaggi, estratto as leggi_estratto, temi_presenti
 
@@ -218,6 +219,52 @@ def elenco_norme(testo: str = "", sistema: str = "", stato: str = "") -> list[di
         sql += " AND stato=?"
         par.append(stato)
     return righe(sql + " ORDER BY riferimento", par)
+
+
+@app.get("/api/registro/candidati")
+def candidati_registro() -> list[dict]:
+    """Documenti indicizzati da cui si può travasare un registro, i più probabili per primi."""
+    elenco = righe("""SELECT id, codice, titolo, tipo, tema, percorso FROM documenti
+                      ORDER BY codice""")
+    utili = []
+    for d in elenco:
+        estensione = Path(d["percorso"]).suffix.lower()
+        if estensione not in {".xlsx", ".xlsm", ".docx", ".csv", ".txt"}:
+            continue
+        testo = f"{d['codice']} {d['titolo']}".lower()
+        d["consigliato"] = ("rgs" in testo or "registro" in testo) and (
+            "normativ" in testo or "norme" in testo or "riferimento" in testo)
+        d["estensione"] = estensione
+        utili.append(d)
+    return sorted(utili, key=lambda d: (not d["consigliato"], d["codice"]))
+
+
+@app.get("/api/registro/anteprima")
+def anteprima_importazione(documento_id: int, foglio: str | None = None) -> dict:
+    doc = riga("SELECT codice, titolo, percorso FROM documenti WHERE id=?", (documento_id,))
+    if not doc:
+        raise HTTPException(404, "Documento non trovato.")
+    percorso = Path(doc["percorso"])
+    if not percorso.exists():
+        raise HTTPException(404, "Il file non è più raggiungibile nella cartella sorgente.")
+    try:
+        return {**anteprima_registro(percorso, foglio), "codice": doc["codice"], "titolo": doc["titolo"]}
+    except Exception as exc:
+        raise HTTPException(400, f"Non riesco a leggere una tabella dal documento: {exc}")
+
+
+@app.post("/api/registro/importa")
+def importa_registro(corpo: dict = Body(...)) -> dict:
+    utente = (corpo.get("utente") or "").strip()
+    if not utente:
+        raise HTTPException(400, "Indicare l'operatore: l'importazione viene tracciata.")
+    mappatura = {k: int(v) for k, v in (corpo.get("mappatura") or {}).items() if str(v) != ""}
+    try:
+        return importa_norme(int(corpo["documento_id"]), mappatura, utente,
+                             foglio=corpo.get("foglio"),
+                             riga_intestazione=corpo.get("riga_intestazione"))
+    except (ValueError, KeyError) as exc:
+        raise HTTPException(400, str(exc))
 
 
 @app.post("/api/norme")

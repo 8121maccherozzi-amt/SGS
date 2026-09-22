@@ -78,7 +78,8 @@
         <option value="monitoraggio">In monitoraggio</option>
         <option value="abrogata">Abrogate</option>
       </select>
-      <button class="primario" id="btn-nuova-norma">Nuova voce</button>
+      <button class="primario" id="btn-importa-registro">Importa dal registro SGS</button>
+      <button id="btn-nuova-norma">Nuova voce</button>
       <a href="/api/esporta/norme.csv" download><button>Esporta CSV</button></a>
       <span style="color:var(--testo-tenue);font-size:12.5px">TGV_MSGS_RGS_01 — Registro normative di riferimento</span>
     </div>
@@ -132,6 +133,7 @@
 </main>
 
 <dialog id="dialogo"><form method="dialog" id="form-dialogo"></form></dialog>
+<dialog id="dialogo-importa" style="max-width:980px"><div id="corpo-importa"></div></dialog>
 <script src="/static/app.js"></script>
 </body>
 </html>

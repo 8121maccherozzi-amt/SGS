@@ -282,6 +282,121 @@ $("#cerca-norme").addEventListener("input", caricaNorme);
 $("#filtro-stato-norme").addEventListener("change", caricaNorme);
 $("#btn-nuova-norma").addEventListener("click", () => formNorma({}));
 
+/* ------------------------------------ importazione di un registro esistente -- */
+// CAMPI_NORMA è dichiarato più avanti nel file: si legge al momento dell'uso.
+const etichettaNorma = (campo) =>
+  (CAMPI_NORMA.find((c) => c[0] === campo) || [campo, campo])[1].replace(" *", "");
+const importazione = { documento: null, anteprima: null };
+
+$("#btn-importa-registro").addEventListener("click", async () => {
+  if (!richiediOperatore()) return;
+  try {
+    const candidati = await api("/api/registro/candidati");
+    if (!candidati.length) {
+      alert("Nessun documento Excel, Word o CSV nell'indice da cui importare.");
+      return;
+    }
+    mostraSceltaDocumento(candidati);
+  } catch (e) { alert(e.message); }
+});
+
+function mostraSceltaDocumento(candidati) {
+  const consigliati = candidati.filter((d) => d.consigliato);
+  $("#corpo-importa").innerHTML =
+    "<h3>Importa le norme da un registro esistente</h3>" +
+    "<p style=\"font-size:13.5px;color:var(--testo-tenue);margin-top:0\">Il registro resta il " +
+    "documento ufficiale: qui se ne legge il contenuto per riempire la tabella interrogabile. " +
+    "Ogni riga scritta finisce nella tracciabilità.</p>" +
+    (consigliati.length ? "<p style=\"font-size:13px\">Documenti che sembrano registri di normative:</p>" : "") +
+    `<label style="font-size:12.5px;color:var(--testo-tenue)">Documento
+       <select id="scelta-documento" style="width:100%;margin-top:4px">` +
+    candidati.map((d) => `<option value="${d.id}">${d.consigliato ? "★ " : ""}${esc(d.codice)} — ${esc(d.titolo)} (${esc(d.estensione)})</option>`).join("") +
+    `</select></label>
+     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+       <button id="importa-annulla">Annulla</button>
+       <button class="primario" id="importa-avanti">Leggi il documento</button>
+     </div>`;
+  $("#dialogo-importa").showModal();
+  $("#importa-annulla").onclick = () => $("#dialogo-importa").close();
+  $("#importa-avanti").onclick = () => caricaAnteprima($("#scelta-documento").value);
+}
+
+async function caricaAnteprima(documentoId, foglio) {
+  $("#corpo-importa").innerHTML = "<h3>Lettura del documento…</h3>";
+  try {
+    const q = new URLSearchParams({ documento_id: documentoId });
+    if (foglio) q.set("foglio", foglio);
+    const a = await api(`/api/registro/anteprima?${q}`);
+    importazione.documento = documentoId;
+    importazione.anteprima = a;
+    mostraMappatura(a);
+  } catch (e) {
+    $("#corpo-importa").innerHTML =
+      `<h3>Non riesco a leggere il documento</h3><p>${esc(e.message)}</p>` +
+      `<div style="display:flex;gap:8px;justify-content:flex-end"><button id="importa-chiudi">Chiudi</button></div>`;
+    $("#importa-chiudi").onclick = () => $("#dialogo-importa").close();
+  }
+}
+
+function mostraMappatura(a) {
+  const opzioni = (selezionato) =>
+    `<option value="">— non importare —</option>` +
+    a.intestazioni.map((t, i) => `<option value="${i}"${i === selezionato ? " selected" : ""}>${esc(t || `colonna ${i + 1}`)}</option>`).join("");
+
+  $("#corpo-importa").innerHTML =
+    `<h3>${esc(a.codice)} — ${esc(a.titolo)}</h3>` +
+    (a.fogli.length > 1
+      ? `<label style="font-size:12.5px;color:var(--testo-tenue)">Foglio
+           <select id="scelta-foglio" style="margin-left:6px">` +
+        a.fogli.map((f) => `<option${f === a.foglio ? " selected" : ""}>${esc(f)}</option>`).join("") +
+        "</select></label>"
+      : "") +
+    `<p style="font-size:13px;margin:10px 0 6px">Trovate <strong>${a.righe_totali}</strong> righe. ` +
+    `Controlla che le colonne siano associate ai campi giusti:</p>` +
+    `<div class="mappatura">` +
+    CAMPI_NORMA.map(([campo]) =>
+      `<label class="${campo === "riferimento" ? "obbligatorio" : ""}">${esc(etichettaNorma(campo))}` +
+      `<select data-campo="${campo}">${opzioni(a.mappatura[campo] ?? -1)}</select></label>`).join("") +
+    "</div>" +
+    `<div class="anteprima"><table><thead><tr>${a.intestazioni.map((t) => `<th>${esc(t)}</th>`).join("")}</tr></thead>` +
+    `<tbody>${a.esempio.map((r) => `<tr>${a.intestazioni.map((_, i) => `<td>${esc((r[i] || "").slice(0, 70))}</td>`).join("")}</tr>`).join("")}</tbody></table></div>` +
+    `<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+       <button id="importa-annulla">Annulla</button>
+       <button class="primario" id="importa-esegui">Importa ${a.righe_totali} righe</button>
+     </div>`;
+
+  $("#importa-annulla").onclick = () => $("#dialogo-importa").close();
+  if ($("#scelta-foglio")) {
+    $("#scelta-foglio").onchange = (e) => caricaAnteprima(importazione.documento, e.target.value);
+  }
+  $("#importa-esegui").onclick = eseguiImportazione;
+}
+
+async function eseguiImportazione() {
+  const mappatura = {};
+  $$("#corpo-importa .mappatura select").forEach((sel) => {
+    if (sel.value !== "") mappatura[sel.dataset.campo] = Number(sel.value);
+  });
+  if (!("riferimento" in mappatura)) {
+    alert("Indicare quale colonna contiene il riferimento normativo.");
+    return;
+  }
+  $("#importa-esegui").disabled = true;
+  try {
+    const r = await api("/api/registro/importa", { method: "POST", body: JSON.stringify({
+      documento_id: importazione.documento,
+      foglio: importazione.anteprima.foglio,
+      riga_intestazione: importazione.anteprima.riga_intestazione,
+      mappatura, utente: stato.utente,
+    }) });
+    $("#dialogo-importa").close();
+    alert(`Importazione completata da ${r.documento} (foglio «${r.foglio}»):\n` +
+          `${r.inserite} voci inserite, ${r.aggiornate} aggiornate, ${r.saltate} righe saltate.`);
+    await Promise.all([caricaNorme(), caricaStato()]);
+  } catch (e) { alert(e.message); }
+  finally { $("#importa-esegui").disabled = false; }
+}
+
 const CAMPI_NORMA = [
   ["riferimento", "Riferimento *", "testo"], ["titolo", "Titolo", "testo"],
   ["ente", "Ente emittente", "testo"], ["tipo_atto", "Tipo di atto", "testo"],
