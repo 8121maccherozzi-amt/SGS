@@ -1,15 +1,17 @@
 """Indicizzazione dei documenti SGS (PDF, DOCX, TXT, MD) in SQLite FTS5."""
 from __future__ import annotations
 
+import fnmatch
 import hashlib
 import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from .config import CARTELLA_DOCUMENTI
+from .config import CARTELLE_DOCUMENTI, ESCLUSIONI
 from .db import adesso, connessione, registra_audit
 
-ESTENSIONI = {".pdf", ".docx", ".txt", ".md"}
+ESTENSIONI = {".pdf", ".docx", ".txt", ".md", ".xlsx", ".xlsm"}
+MAX_CELLE_FOGLIO = 20000
 DIM_CHUNK = 1400
 SOVRAPPOSIZIONE = 200
 
@@ -89,14 +91,48 @@ def metadati_da_nome(percorso: Path) -> dict:
     }
 
 
-def _testo_pdf(percorso: Path) -> list[tuple[int | None, str]]:
+def escluso(percorso: Path) -> bool:
+    """Vero se il file, o una qualsiasi cartella del suo percorso, ricade in un'esclusione."""
+    parti = [percorso.name, *[p.name for p in percorso.parents]]
+    for modello in ESCLUSIONI:
+        for parte in parti:
+            if fnmatch.fnmatch(parte.lower(), modello.lower()):
+                return True
+    return False
+
+
+def _testo_pdf(percorso: Path) -> list[tuple[int | None, str | None, str]]:
     from pypdf import PdfReader
 
     reader = PdfReader(str(percorso))
-    return [(i + 1, (p.extract_text() or "")) for i, p in enumerate(reader.pages)]
+    return [(i + 1, None, (p.extract_text() or "")) for i, p in enumerate(reader.pages)]
 
 
-def _testo_docx(percorso: Path) -> list[tuple[int | None, str]]:
+def _testo_xlsx(percorso: Path) -> list[tuple[int | None, str | None, str]]:
+    """Registri in Excel (Hazard Log, registro IPS, registro NC): un blocco per foglio."""
+    import openpyxl
+
+    libro = openpyxl.load_workbook(str(percorso), read_only=True, data_only=True)
+    fogli: list[tuple[int | None, str | None, str]] = []
+    try:
+        for foglio in libro.worksheets:
+            righe_testo, celle = [], 0
+            for riga in foglio.iter_rows(values_only=True):
+                valori = [str(v).strip().replace("\n", " ") for v in riga if v not in (None, "")]
+                celle += len(valori)
+                if valori:
+                    righe_testo.append(" | ".join(valori))
+                if celle > MAX_CELLE_FOGLIO:
+                    righe_testo.append("[…foglio troncato in indicizzazione…]")
+                    break
+            if righe_testo:
+                fogli.append((None, f"Foglio «{foglio.title}»", "\n".join(righe_testo)))
+    finally:
+        libro.close()
+    return fogli
+
+
+def _testo_docx(percorso: Path) -> list[tuple[int | None, str | None, str]]:
     import docx
 
     d = docx.Document(str(percorso))
@@ -114,16 +150,19 @@ def _testo_docx(percorso: Path) -> list[tuple[int | None, str]]:
             celle = [c.text.strip().replace("\n", " ") for c in r.cells]
             if any(celle):
                 parti.append(" | ".join(celle))
-    return [(None, "\n".join(parti))]
+    return [(None, None, "\n".join(parti))]
 
 
-def estrai(percorso: Path) -> list[tuple[int | None, str]]:
+def estrai(percorso: Path) -> list[tuple[int | None, str | None, str]]:
+    """Restituisce blocchi (pagina, sezione imposta, testo) a seconda del formato."""
     suffisso = percorso.suffix.lower()
     if suffisso == ".pdf":
         return _testo_pdf(percorso)
     if suffisso == ".docx":
         return _testo_docx(percorso)
-    return [(None, percorso.read_text(encoding="utf-8", errors="replace"))]
+    if suffisso in {".xlsx", ".xlsm"}:
+        return _testo_xlsx(percorso)
+    return [(None, None, percorso.read_text(encoding="utf-8", errors="replace"))]
 
 
 RE_SEZIONE = re.compile(
@@ -131,12 +170,14 @@ RE_SEZIONE = re.compile(
 )
 
 
-def spezza(pagine: list[tuple[int | None, str]]) -> list[Pezzo]:
+def spezza(pagine: list[tuple[int | None, str | None, str]]) -> list[Pezzo]:
     pezzi: list[Pezzo] = []
     ordine = 0
     sezione_corrente: str | None = None
 
-    for pagina, testo in pagine:
+    for pagina, sezione_imposta, testo in pagine:
+        if sezione_imposta:
+            sezione_corrente = sezione_imposta
         testo = re.sub(r"[ \t]+", " ", testo or "").strip()
         if not testo:
             continue
@@ -144,7 +185,7 @@ def spezza(pagine: list[tuple[int | None, str]]) -> list[Pezzo]:
         corrente = ""
         sezione_blocco = sezione_corrente
         for riga in testo.splitlines():
-            m = RE_SEZIONE.match(riga)
+            m = None if sezione_imposta else RE_SEZIONE.match(riga)
             if m:
                 if corrente.strip():
                     blocchi.append((corrente.strip(), sezione_blocco))
@@ -160,22 +201,37 @@ def spezza(pagine: list[tuple[int | None, str]]) -> list[Pezzo]:
             blocchi.append((corrente.strip(), sezione_blocco))
 
         for testo_blocco, sezione in blocchi:
-            if len(testo_blocco) < 40:
+            if len(testo_blocco) < 20:
                 continue
             pezzi.append(Pezzo(ordine=ordine, pagina=pagina, sezione=sezione, testo=testo_blocco))
             ordine += 1
     return pezzi
 
 
-def indicizza_file(percorso: Path, *, utente: str = "sistema", forza: bool = False) -> dict:
+def _codice_disponibile(con, codice: str, percorso: Path) -> tuple[str, dict | None]:
+    """Evita che due file diversi con lo stesso nome-codice si sovrascrivano a vicenda."""
+    per_percorso = con.execute("SELECT * FROM documenti WHERE percorso=?", (str(percorso),)).fetchone()
+    if per_percorso:
+        return per_percorso["codice"], dict(per_percorso)
+
+    candidato, contatore = codice, 1
+    while True:
+        occupante = con.execute("SELECT * FROM documenti WHERE codice=?", (candidato,)).fetchone()
+        if occupante is None:
+            return candidato, None
+        if not Path(occupante["percorso"]).exists():
+            return candidato, dict(occupante)      # il vecchio file non c'è più: si riusa il codice
+        contatore += 1
+        candidato = f"{codice}#{contatore}"
+
+
+def indicizza_file(percorso: Path, *, utente: str = "sistema", forza: bool = False,
+                   cartella: Path | None = None) -> dict:
     meta = metadati_da_nome(percorso)
     impronta = _impronta(percorso)
 
     with connessione() as con:
-        esistente = con.execute(
-            "SELECT id, impronta, n_chunk FROM documenti WHERE codice=? OR percorso=?",
-            (meta["codice"], str(percorso)),
-        ).fetchone()
+        meta["codice"], esistente = _codice_disponibile(con, meta["codice"], percorso)
 
         if esistente and esistente["impronta"] == impronta and not forza:
             return {"codice": meta["codice"], "stato": "invariato", "chunk": esistente["n_chunk"]}
@@ -189,19 +245,20 @@ def indicizza_file(percorso: Path, *, utente: str = "sistema", forza: bool = Fal
             doc_id = esistente["id"]
             con.execute("DELETE FROM chunk WHERE documento_id=?", (doc_id,))
             con.execute(
-                """UPDATE documenti SET titolo=?, tipo=?, sistema=?, revisione=?, percorso=?,
-                       impronta=?, n_chunk=?, indicizzato_il=? WHERE id=?""",
-                (meta["titolo"], meta["tipo"], meta["sistema"], meta["revisione"],
-                 str(percorso), impronta, len(pezzi), adesso(), doc_id),
+                """UPDATE documenti SET codice=?, titolo=?, tipo=?, sistema=?, revisione=?,
+                       percorso=?, impronta=?, n_chunk=?, indicizzato_il=?, cartella=? WHERE id=?""",
+                (meta["codice"], meta["titolo"], meta["tipo"], meta["sistema"], meta["revisione"],
+                 str(percorso), impronta, len(pezzi), adesso(),
+                 str(cartella) if cartella else None, doc_id),
             )
             azione = "reindicizzato"
         else:
             cur = con.execute(
                 """INSERT INTO documenti (codice, titolo, tipo, sistema, revisione, percorso,
-                                          impronta, n_chunk, indicizzato_il)
-                   VALUES (?,?,?,?,?,?,?,?,?)""",
+                                          impronta, n_chunk, indicizzato_il, cartella)
+                   VALUES (?,?,?,?,?,?,?,?,?,?)""",
                 (meta["codice"], meta["titolo"], meta["tipo"], meta["sistema"], meta["revisione"],
-                 str(percorso), impronta, len(pezzi), adesso()),
+                 str(percorso), impronta, len(pezzi), adesso(), str(cartella) if cartella else None),
             )
             doc_id = cur.lastrowid
             azione = "indicizzato"
@@ -216,15 +273,50 @@ def indicizza_file(percorso: Path, *, utente: str = "sistema", forza: bool = Fal
     return {"codice": meta["codice"], "titolo": meta["titolo"], "stato": azione, "chunk": len(pezzi)}
 
 
-def indicizza_cartella(cartella: Path | None = None, *, utente: str = "sistema",
-                       forza: bool = False) -> list[dict]:
-    cartella = Path(cartella or CARTELLA_DOCUMENTI)
-    cartella.mkdir(parents=True, exist_ok=True)
+def rimuovi_mancanti(*, utente: str = "sistema") -> list[str]:
+    """Toglie dall'indice i documenti il cui file non è più raggiungibile."""
+    rimossi = []
+    with connessione() as con:
+        for d in con.execute("SELECT id, codice, percorso FROM documenti").fetchall():
+            if Path(d["percorso"]).exists():
+                continue
+            con.execute("DELETE FROM chunk WHERE documento_id=?", (d["id"],))
+            con.execute("DELETE FROM documenti WHERE id=?", (d["id"],))
+            registra_audit(con, utente=utente, azione="documento_rimosso", entita="documenti",
+                           entita_id=d["id"], prima=dict(d), origine="indicizzazione",
+                           note="file non più presente nella cartella sorgente")
+            rimossi.append(d["codice"])
+    return rimossi
+
+
+def indicizza_cartella(cartelle: list[Path] | Path | None = None, *, utente: str = "sistema",
+                       forza: bool = False, pulisci: bool = True) -> list[dict]:
+    """Indicizza, in sola lettura, tutte le cartelle sorgente configurate."""
+    if cartelle is None:
+        radici = list(CARTELLE_DOCUMENTI)
+    elif isinstance(cartelle, (str, Path)):
+        radici = [Path(cartelle)]
+    else:
+        radici = [Path(c) for c in cartelle]
+
     esiti: list[dict] = []
-    for percorso in sorted(cartella.rglob("*")):
-        if percorso.is_file() and percorso.suffix.lower() in ESTENSIONI:
+    for radice in radici:
+        if not radice.exists():
+            esiti.append({"codice": str(radice), "stato": "cartella_assente",
+                          "errore": "percorso non raggiungibile (condivisione non montata?)"})
+            continue
+        for percorso in sorted(radice.rglob("*")):
+            if not percorso.is_file() or percorso.suffix.lower() not in ESTENSIONI:
+                continue
+            if escluso(percorso):
+                esiti.append({"codice": percorso.name, "stato": "escluso"})
+                continue
             try:
-                esiti.append(indicizza_file(percorso, utente=utente, forza=forza))
-            except Exception as exc:  # un file illeggibile non deve fermare il lotto
+                esiti.append(indicizza_file(percorso, utente=utente, forza=forza, cartella=radice))
+            except Exception as exc:      # un file illeggibile non deve fermare il lotto
                 esiti.append({"codice": percorso.name, "stato": "errore", "errore": str(exc)})
+
+    if pulisci:
+        for codice in rimuovi_mancanti(utente=utente):
+            esiti.append({"codice": codice, "stato": "rimosso"})
     return esiti

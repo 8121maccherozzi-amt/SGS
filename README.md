@@ -9,7 +9,7 @@ esplicita dell'operatore e tracciabilità completa.
 
 | Funzione | Descrizione |
 |---|---|
-| Ricerca documentale | Indicizza Manuale, Procedure, Istruzioni Operative e Registri (PDF, DOCX, TXT, MD) e risponde citando codice documento, revisione, pagina e sezione |
+| Ricerca documentale | Risponde citando codice documento, revisione, pagina e sezione (per i registri Excel, il foglio) |
 | Estratti letterali | Restituisce il testo originale del passaggio, non una parafrasi |
 | Registro normative | TGV_MSGS_RGS_01: riferimenti, applicabilità per sistema, stato, impatto, azioni, scadenze |
 | Indicatori IPS | TGV_PRC_06_RGS_02: anagrafica, soglie di Allarme/Intervento, misure per periodo, stato automatico rispetto alle soglie (TGV_PRC_11) |
@@ -44,13 +44,52 @@ La chiave API si ottiene su <https://console.anthropic.com/settings/keys>.
 | `python3 sgs.py esempi` | Carica dati dimostrativi (5 norme, 6 IPS, 1 documento fittizio) |
 | `python3 sgs.py importa file.csv --tipo norme\|indicatori` | Importa un registro esistente esportato in CSV |
 
-### Caricamento dei documenti
+## Dove stanno i dati di input
 
-Copiare i file in `documenti/` e premere **Reindicizza cartella** (oppure caricarli dalla scheda
-Documenti). Il codice, il tipo, il sistema e la revisione vengono dedotti dal nome file secondo la
-naming convention del SGS — es. `TGV_PRC_11 - Monitoraggio prestazioni rev 02.pdf`,
-`MET_PRC_06_RGS_02 - Registro IPS.docx`. Reindicizzare dopo ogni revisione: l'indice segue
-l'impronta del file e rileva le modifiche.
+Si indicano in `.env` una o più **cartelle sorgente**, separate da `;`. Vengono lette e mai
+modificate: possono essere cartelle locali, unità di rete mappate o percorsi UNC.
+
+```ini
+# Windows
+SGS_DOCUMENTI=\\srv-file\SGS\Documentazione;S:\SGS\Registri
+# Linux / macOS
+SGS_DOCUMENTI=/mnt/sgs/documentazione;/mnt/sgs/registri
+SGS_SOLA_LETTURA=1
+```
+
+| Variabile | Effetto |
+|---|---|
+| `SGS_DOCUMENTI` | Cartelle da indicizzare, separate da `;`, ricorsive |
+| `SGS_SOLA_LETTURA=1` | Disattiva il caricamento di file dalla dashboard: nulla viene mai scritto nelle cartelle sorgente |
+| `SGS_ESCLUDI` | Glob di file e cartelle da non indicizzare mai — serve a tenere fuori dall'indice i documenti con dati personali o sanitari (default: `~$*;*.tmp;*.bak;.*;Archivio storico*;Riservato*;Dati personali*;*Bozza*`) |
+| `SGS_MODALITA` | `assistito` (ricerca locale + risposte del modello) oppure `locale` (nessuna chiamata esterna) |
+| `SGS_CARTELLA_CARICAMENTI` | Dove atterrano i file caricati dalla dashboard, quando il caricamento è abilitato |
+| `SGS_DB` | File SQLite con indice, registri e log di tracciabilità |
+| `SGS_INDIRIZZO` | `127.0.0.1` di default: raggiungibile solo dal PC su cui gira |
+
+Codice, tipo, sistema e revisione sono dedotti dal nome file secondo la naming convention del SGS —
+`TGV_PRC_11 - Monitoraggio prestazioni rev 02.pdf`, `MET_PRC_06_RGS_01 - Hazard Log rev 03.xlsx`.
+Se due file diversi producono lo stesso codice, il secondo riceve un suffisso (`TGV_PRC_11#2`).
+Premere **Reindicizza cartelle** dopo ogni revisione: l'indice segue l'impronta dei file, rileva le
+modifiche e toglie dall'indice i documenti non più presenti.
+
+I registri Excel (Hazard Log, registro IPS, registro NC, prescrizioni ANSFISA) sono indicizzati un
+foglio alla volta, e la citazione riporta il nome del foglio.
+
+## Che cosa resta in locale e che cosa no
+
+| Elaborazione | Dove avviene |
+|---|---|
+| Lettura dei file, estrazione del testo, indice full-text | Sulla macchina, nel file SQLite |
+| Ricerca, registri normative e IPS, proposte, log di tracciabilità | Sulla macchina |
+| Formulazione della risposta in linguaggio naturale (`SGS_MODALITA=assistito`) | **API Anthropic**: vengono inviati la domanda e i soli passaggi recuperati, non l'archivio |
+| Tutto, senza alcuna trasmissione (`SGS_MODALITA=locale`) | Sulla macchina: la scheda diventa «Ricerca documentale», l'assistente è disattivato e l'endpoint `/api/chat` risponde 409 |
+
+Non esiste una terza via con questa architettura: la comprensione della domanda in linguaggio
+naturale richiede un modello, e il modello è remoto. Se la risposta conversazionale serve ma il
+dato non può uscire, l'alternativa è un modello eseguito in azienda (Ollama o simili, su GPU
+dedicata) — `sgs_live/agent.py` è l'unico file da adattare, a prezzo di una qualità inferiore nella
+comprensione della domanda e nella redazione della risposta.
 
 ## Esempi di richiesta
 
@@ -77,8 +116,9 @@ sgs_live/main.py        API HTTP (FastAPI)
 web/                    dashboard (HTML/CSS/JS, nessuna dipendenza esterna)
 ```
 
-Tutto gira in locale: un solo file SQLite (`sgs_live.db`) e i documenti nella cartella locale.
-L'unica comunicazione verso l'esterno è la chiamata all'API Anthropic.
+Un solo file SQLite (`sgs_live.db`) e i documenti nelle cartelle indicate, lette senza mai essere
+modificate. L'unica comunicazione verso l'esterno è la chiamata all'API Anthropic, assente in
+modalità `locale`.
 
 ### Presidi di sicurezza applicativa
 
@@ -97,7 +137,9 @@ L'unica comunicazione verso l'esterno è la chiamata all'API Anthropic.
 | Tema | Perché conta | Opzione suggerita |
 |---|---|---|
 | **Doppia fonte del dato** | Se i registri ufficiali restano in Excel, SGS Live diventa una seconda copia: disallineamento e possibile rilievo in audit | Scegliere una fonte unica: o SGS Live con esportazione periodica firmata, o Excel con reimportazione via `sgs.py importa` dopo ogni aggiornamento |
-| **Trasferimento dati al fornitore API** | I passaggi recuperati dai documenti vengono inviati all'API Anthropic | Valutazione con il DPO; escludere dall'indice documenti con dati personali (nominativi, abilitazioni, dati sanitari) |
+| **Trasferimento dati al fornitore API** | In modalità `assistito` i passaggi recuperati vengono inviati all'API Anthropic | Valutazione con il DPO; `SGS_ESCLUDI` per tenere fuori dall'indice i documenti con dati personali, sanitari o disciplinari; `SGS_MODALITA=locale` se la trasmissione non è ammissibile |
+| **Accesso alle cartelle sorgente** | L'applicazione legge tutto ciò che trova sotto i percorsi indicati | Puntare a una cartella di sola lettura, con un'utenza di servizio abilitata in lettura, e verificare le esclusioni prima della prima indicizzazione |
+| **Nessuna autenticazione** | Il server non ha login: chiunque raggiunga la porta opera come l'operatore che digita il proprio nome | Tenere `SGS_INDIRIZZO=127.0.0.1` (solo macchina locale); per l'uso condiviso serve un reverse proxy con autenticazione aziendale |
 | **Integrità del log** | Il log è append-only per costruzione, ma il file SQLite resta modificabile da chi ha accesso al filesystem | Backup periodico e conservazione su supporto controllato, se l'evidenza deve valere verso ANSFISA |
 | **PDF scansionati** | Senza testo estraibile non entrano nell'indice (l'indicizzazione lo segnala) | OCR preventivo dei documenti storici |
 | **Ricerca lessicale** | BM25 trova le parole, non i concetti: una domanda formulata con termini diversi dal documento può non recuperare il passaggio | Il dizionario di sinonimi è in `sgs_live/retrieval.py` e va esteso con la terminologia aziendale; in prospettiva, ricerca semantica |

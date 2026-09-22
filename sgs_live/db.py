@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS documenti (
     impronta TEXT NOT NULL,
     n_chunk INTEGER NOT NULL DEFAULT 0,
     indicizzato_il TEXT,
+    cartella TEXT,
     note TEXT
 );
 
@@ -171,9 +172,17 @@ def connessione() -> sqlite3.Connection:
     return con
 
 
+# Colonne aggiunte dopo la prima installazione: applicate a ogni avvio se mancanti.
+MIGRAZIONI = [("documenti", "cartella", "TEXT")]
+
+
 def inizializza() -> None:
     with connessione() as con:
         con.executescript(SCHEMA)
+        for tabella, colonna, tipo in MIGRAZIONI:
+            presenti = {r["name"] for r in con.execute(f"PRAGMA table_info({tabella})")}
+            if colonna not in presenti:
+                con.execute(f"ALTER TABLE {tabella} ADD COLUMN {colonna} {tipo}")
 
 
 def righe(sql: str, parametri: Iterable[Any] = ()) -> list[dict]:

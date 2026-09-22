@@ -117,6 +117,16 @@ function aggiungiMessaggio(ruolo, testo, citazioni = []) {
   return div;
 }
 
+function rispostaRicerca(risultati) {
+  if (!risultati.length) return "Nessun passaggio corrispondente nei documenti indicizzati.";
+  return risultati.map((r) => {
+    const rif = [r.codice, r.revisione ? `rev. ${r.revisione}` : null,
+                 r.pagina ? `pag. ${r.pagina}` : null, r.sezione ? `sez. ${r.sezione}` : null]
+      .filter(Boolean).join(" · ");
+    return `### ${rif}\n${r.testo.slice(0, 1200)}${r.testo.length > 1200 ? " […]" : ""}`;
+  }).join("\n\n");
+}
+
 async function invia() {
   const domanda = $("#domanda").value.trim();
   if (!domanda) return;
@@ -125,6 +135,19 @@ async function invia() {
   $("#btn-invia").disabled = true;
   aggiungiMessaggio("utente", domanda);
   const attesa = aggiungiMessaggio("assistente", "_Consultazione dei documenti in corso…_");
+
+  if (stato.configurazione.modalita === "locale") {
+    try {
+      const r = await api("/api/ricerca", { method: "POST", body: JSON.stringify({ domanda }) });
+      attesa.remove();
+      aggiungiMessaggio("assistente", rispostaRicerca(r.risultati), r.risultati);
+    } catch (e) {
+      attesa.remove();
+      aggiungiMessaggio("assistente", `**Errore:** ${esc(e.message)}`);
+    } finally { $("#btn-invia").disabled = false; }
+    return;
+  }
+
   try {
     const r = await api("/api/chat", { method: "POST", body: JSON.stringify(
       { domanda, sessione: stato.sessione, utente: stato.utente }) });
@@ -390,7 +413,7 @@ $("#btn-reindicizza").addEventListener("click", async () => {
     alert(`File esaminati: ${r.totale}\n` + Object.entries(riepilogo).map(([k, v]) => `${k}: ${v}`).join("\n"));
     await Promise.all([caricaDocumenti(), caricaStato()]);
   } catch (e) { alert(e.message); }
-  finally { $("#btn-reindicizza").disabled = false; $("#btn-reindicizza").textContent = "Reindicizza cartella"; }
+  finally { $("#btn-reindicizza").disabled = false; $("#btn-reindicizza").textContent = "Reindicizza cartelle"; }
 });
 
 /* -------------------------------------------------------------- audit -- */
@@ -421,12 +444,42 @@ $("#btn-aggiorna").addEventListener("click", () => {
      documenti: caricaDocumenti, audit: caricaAudit }[attiva] || (() => {}))();
 });
 
+function applicaConfigurazione(c) {
+  $("#filtro-sistema-ips").innerHTML = '<option value="">Tutti i sistemi</option>' +
+    (c.sistemi || []).map((s) => `<option>${s}</option>`).join("");
+
+  const cartelle = (c.cartelle_documenti || []).map((k) =>
+    `<li><code>${esc(k.percorso)}</code> — ${k.raggiungibile
+      ? "raggiungibile" : '<strong style="color:var(--intervento)">non raggiungibile</strong>'}</li>`).join("");
+  $("#info-cartelle").innerHTML =
+    `<strong>Cartelle sorgente (lette, mai modificate):</strong><ul style="margin:6px 0">${cartelle}</ul>` +
+    `<div>Formati indicizzati: ${esc((c.estensioni || []).join(" "))} · ` +
+    `esclusioni: <code>${esc((c.esclusioni || []).join(" ; "))}</code></div>`;
+
+  if (c.sola_lettura) {
+    $("#gruppo-caricamento").hidden = true;
+    $("#nota-sola-lettura").hidden = false;
+  }
+  if (c.modalita === "locale") {
+    $('#schede button[data-scheda="assistente"]').textContent = "Ricerca documentale";
+    $("#nota-modalita").hidden = false;
+    $("#domanda").placeholder = "Parole chiave o frase da cercare nei documenti indicizzati…";
+    $("#btn-invia").textContent = "Cerca";
+    $$(".suggerimenti button").forEach((b, i) => { if (i > 1) b.remove(); });
+  } else if (c.modello) {
+    $("#nota-modalita").hidden = false;
+    $("#nota-modalita").innerHTML =
+      `<strong>Elaborazione locale con assistenza del modello.</strong> Indicizzazione, archivio e ` +
+      `ricerca restano su questa macchina. Per formulare la risposta vengono inviati all'API ` +
+      `Anthropic (<code>${esc(c.modello)}</code>) la domanda e i soli passaggi recuperati. ` +
+      `Per escludere qualunque trasmissione, avviare con <code>SGS_MODALITA=locale</code>.`;
+  }
+}
+
 (async function avvio() {
   try {
     stato.configurazione = await api("/api/configurazione");
-    $("#info-cartella").textContent = `Cartella monitorata: ${stato.configurazione.cartella_documenti} · modello ${stato.configurazione.modello}`;
-    $("#filtro-sistema-ips").innerHTML = '<option value="">Tutti i sistemi</option>' +
-      stato.configurazione.sistemi.map((s) => `<option>${s}</option>`).join("");
+    applicaConfigurazione(stato.configurazione);
   } catch (_) {}
   await caricaStato();
   for (const m of await api(`/api/conversazione/${stato.sessione}`)) {

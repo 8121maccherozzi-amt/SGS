@@ -14,7 +14,8 @@ import shutil
 import sys
 from pathlib import Path
 
-from sgs_live.config import CARTELLA_DOCUMENTI, PORTA, RADICE
+from sgs_live.config import (CARTELLA_DOCUMENTI, CARTELLE_DOCUMENTI, INDIRIZZO, MODALITA,
+                             PORTA, RADICE, SOLA_LETTURA)
 from sgs_live.db import adesso, connessione, inizializza, registra_audit
 from sgs_live.ingest import indicizza_cartella
 from sgs_live.tools import CAMPI_INDICATORE, CAMPI_NORMA
@@ -72,7 +73,10 @@ def main() -> int:
     sotto = parser.add_subparsers(dest="comando", required=True)
     sotto.add_parser("avvia")
     p_ind = sotto.add_parser("indicizza")
-    p_ind.add_argument("--forza", action="store_true")
+    p_ind.add_argument("--forza", action="store_true",
+                       help="reindicizza anche i file non modificati")
+    p_ind.add_argument("--cartella", action="append",
+                       help="indicizza solo questa cartella (ripetibile)")
     sotto.add_parser("esempi")
     p_imp = sotto.add_parser("importa")
     p_imp.add_argument("file")
@@ -84,12 +88,16 @@ def main() -> int:
 
     if argomenti.comando == "avvia":
         import uvicorn
-        print(f"SGS Live → http://127.0.0.1:{PORTA}")
-        uvicorn.run("sgs_live.main:app", host="127.0.0.1", port=PORTA, reload=False)
+        print(f"SGS Live → http://{INDIRIZZO}:{PORTA}")
+        print(f"  modalità: {MODALITA}" + ("  (sola lettura)" if SOLA_LETTURA else ""))
+        for cartella in CARTELLE_DOCUMENTI:
+            print(f"  cartella: {cartella}" + ("" if cartella.exists() else "  ⚠ non raggiungibile"))
+        uvicorn.run("sgs_live.main:app", host=INDIRIZZO, port=PORTA, reload=False)
         return 0
 
     if argomenti.comando == "indicizza":
-        for esito in indicizza_cartella(forza=argomenti.forza):
+        cartelle = [Path(c) for c in (argomenti.cartella or [])] or None
+        for esito in indicizza_cartella(cartelle, forza=argomenti.forza):
             passaggi = esito.get("chunk")
             print(f"  {esito['stato']:14s} {esito['codice']}" +
                   (f" ({passaggi} passaggi)" if passaggi else ""))

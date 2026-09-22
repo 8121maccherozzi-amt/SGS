@@ -13,9 +13,11 @@ from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import agent, tools
-from .config import CARTELLA_DOCUMENTI, CARTELLA_WEB, MODELLO, SISTEMI, TIPI_DOCUMENTO
+from .config import (CARTELLA_DOCUMENTI, CARTELLE_DOCUMENTI, CARTELLA_WEB, ESCLUSIONI, MODALITA,
+                     MODELLO, SISTEMI, SOLA_LETTURA, TIPI_DOCUMENTO)
 from .db import adesso, connessione, inizializza, registra_audit, riga, righe, stato_indicatore
 from .ingest import ESTENSIONI, indicizza_cartella
+from .retrieval import cerca as cerca_passaggi
 
 app = FastAPI(title="SGS Live", version="1.0")
 inizializza()
@@ -28,8 +30,18 @@ def home() -> FileResponse:
 
 @app.get("/api/configurazione")
 def configurazione() -> dict:
-    return {"modello": MODELLO, "sistemi": SISTEMI, "tipi_documento": TIPI_DOCUMENTO,
-            "cartella_documenti": str(CARTELLA_DOCUMENTI)}
+    return {
+        "modello": MODELLO if MODALITA == "assistito" else None,
+        "modalita": MODALITA,
+        "sola_lettura": SOLA_LETTURA,
+        "sistemi": SISTEMI,
+        "tipi_documento": TIPI_DOCUMENTO,
+        "estensioni": sorted(ESTENSIONI),
+        "esclusioni": ESCLUSIONI,
+        "cartelle_documenti": [
+            {"percorso": str(c), "raggiungibile": c.exists()} for c in CARTELLE_DOCUMENTI],
+        "cartella_caricamenti": str(CARTELLA_DOCUMENTI) if not SOLA_LETTURA else None,
+    }
 
 
 # ------------------------------------------------------------------ stato ----
@@ -64,8 +76,25 @@ def stato() -> dict:
 
 # --------------------------------------------------------------- dialogo -----
 
+@app.post("/api/ricerca")
+def ricerca(corpo: dict = Body(...)) -> dict:
+    """Ricerca documentale senza modello: nessun dato esce dalla macchina."""
+    domanda = (corpo.get("domanda") or "").strip()
+    if not domanda:
+        raise HTTPException(400, "Richiesta vuota.")
+    risultati = cerca_passaggi(domanda, sistema=corpo.get("sistema") or None,
+                               massimo=int(corpo.get("massimo", 8)))
+    return {"risultati": [
+        {"chunk_id": r["chunk_id"], "codice": r["codice"], "titolo": r["titolo"],
+         "revisione": r["revisione"], "pagina": r["pagina"], "sezione": r["sezione"],
+         "testo": r["testo"], "evidenza": r["evidenza"]} for r in risultati]}
+
+
 @app.post("/api/chat")
 def chat(corpo: dict = Body(...)) -> dict:
+    if MODALITA == "locale":
+        raise HTTPException(409, "Modalità locale attiva: l'assistente è disattivato e nessun dato "
+                                 "viene inviato all'esterno. Usare la ricerca documentale.")
     domanda = (corpo.get("domanda") or "").strip()
     if not domanda:
         raise HTTPException(400, "Domanda vuota.")
@@ -282,6 +311,9 @@ def indicizza(corpo: dict = Body(default={})) -> dict:
 
 @app.post("/api/documenti/carica")
 async def carica(file: UploadFile = File(...), utente: str = Form("operatore")) -> dict:
+    if SOLA_LETTURA:
+        raise HTTPException(403, "Modalità sola lettura: SGS Live non scrive nelle cartelle "
+                                 "sorgente. Depositare il file dalla condivisione e reindicizzare.")
     nome = Path(file.filename or "documento").name
     if Path(nome).suffix.lower() not in ESTENSIONI:
         raise HTTPException(400, f"Estensione non gestita. Ammesse: {', '.join(sorted(ESTENSIONI))}")

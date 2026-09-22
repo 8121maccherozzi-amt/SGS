@@ -32,6 +32,7 @@
 <main>
   <!-- ASSISTENTE -->
   <section class="pannello attivo" id="pannello-assistente">
+    <div class="avviso" id="nota-modalita" hidden></div>
     <div class="suggerimenti">
       <button>Mostrami l'estratto del documento che parla di formazione della manutenzione veicoli</button>
       <button>Quali IPS sono sopra la soglia di allarme?</button>
@@ -97,11 +98,16 @@
 
   <!-- DOCUMENTI -->
   <section class="pannello" id="pannello-documenti">
+    <div class="avviso" id="info-cartelle"></div>
+    <div class="avviso" id="nota-sola-lettura" hidden><strong>Modalità sola lettura.</strong>
+      SGS Live non scrive nelle cartelle sorgente: depositare i file dalla condivisione e premere
+      «Reindicizza cartelle».</div>
     <div class="barra-strumenti">
-      <input type="file" id="file-documento" accept=".pdf,.docx,.txt,.md">
-      <button class="primario" id="btn-carica">Carica e indicizza</button>
-      <button id="btn-reindicizza">Reindicizza cartella</button>
-      <span id="info-cartella" style="color:var(--testo-tenue);font-size:12.5px"></span>
+      <span id="gruppo-caricamento">
+        <input type="file" id="file-documento" accept=".pdf,.docx,.xlsx,.xlsm,.txt,.md">
+        <button class="primario" id="btn-carica">Carica e indicizza</button>
+      </span>
+      <button id="btn-reindicizza">Reindicizza cartelle</button>
     </div>
     <div id="tabella-documenti"></div>
   </section>
