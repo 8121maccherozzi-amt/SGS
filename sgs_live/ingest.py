@@ -365,21 +365,26 @@ def indicizza_file(percorso: Path, *, utente: str = "sistema", forza: bool = Fal
 
 
 def conta_indicizzabili(cartella: Path) -> dict:
-    """Quanti file utili contiene una cartella: serve a capire perché l'indice resta vuoto."""
+    """Quanti file utili contiene una cartella, e con quali estensioni restano fuori gli altri."""
     cartella = Path(cartella)
     if not cartella.exists():
-        return {"raggiungibile": False, "utili": 0, "esclusi": 0, "altri": 0}
+        return {"raggiungibile": False, "utili": 0, "esclusi": 0, "altri": 0, "estensioni_escluse": {}}
     utili = esclusi = altri = 0
+    estensioni: dict[str, int] = {}
     for percorso in cartella.rglob("*"):
         if not percorso.is_file():
             continue
         if percorso.suffix.lower() not in ESTENSIONI:
             altri += 1
+            etichetta = percorso.suffix.lower() or "(senza estensione)"
+            estensioni[etichetta] = estensioni.get(etichetta, 0) + 1
         elif escluso(percorso):
             esclusi += 1
         else:
             utili += 1
-    return {"raggiungibile": True, "utili": utili, "esclusi": esclusi, "altri": altri}
+    ordinate = dict(sorted(estensioni.items(), key=lambda v: -v[1])[:8])
+    return {"raggiungibile": True, "utili": utili, "esclusi": esclusi, "altri": altri,
+            "estensioni_escluse": ordinate}
 
 
 def _sotto(percorso: Path, radici: list[Path]) -> bool:
@@ -412,8 +417,14 @@ def rimuovi_mancanti(*, utente: str = "sistema", radici: list[Path] | None = Non
 
 
 def indicizza_cartella(cartelle: list[Path] | Path | None = None, *, utente: str = "sistema",
-                       forza: bool = False, pulisci: bool = True) -> list[dict]:
-    """Indicizza, in sola lettura, tutte le cartelle sorgente configurate."""
+                       forza: bool = False, pulisci: bool = True,
+                       avanzamento=None) -> list[dict]:
+    """Indicizza, in sola lettura, tutte le cartelle sorgente configurate.
+
+    `avanzamento` viene richiamato con (fatti, totale, nome del file) a ogni file:
+    su una condivisione di rete con centinaia di documenti l'attesa è lunga e
+    l'interfaccia deve poter dire a che punto è.
+    """
     if cartelle is None:
         radici = cartelle_documenti()
     elif isinstance(cartelle, (str, Path)):
@@ -422,6 +433,7 @@ def indicizza_cartella(cartelle: list[Path] | Path | None = None, *, utente: str
         radici = [Path(c) for c in cartelle]
 
     esiti: list[dict] = []
+    da_fare: list[tuple[Path, Path]] = []
     for radice in radici:
         if not radice.exists():
             esiti.append({"codice": str(radice), "stato": "cartella_assente",
@@ -433,10 +445,16 @@ def indicizza_cartella(cartelle: list[Path] | Path | None = None, *, utente: str
             if escluso(percorso):
                 esiti.append({"codice": percorso.name, "stato": "escluso"})
                 continue
-            try:
-                esiti.append(indicizza_file(percorso, utente=utente, forza=forza, cartella=radice))
-            except Exception as exc:      # un file illeggibile non deve fermare il lotto
-                esiti.append({"codice": percorso.name, "stato": "errore", "errore": str(exc)})
+            da_fare.append((percorso, radice))
+
+    totale = len(da_fare)
+    for fatti, (percorso, radice) in enumerate(da_fare, start=1):
+        if avanzamento:
+            avanzamento(fatti, totale, percorso.name)
+        try:
+            esiti.append(indicizza_file(percorso, utente=utente, forza=forza, cartella=radice))
+        except Exception as exc:          # un file illeggibile non deve fermare il lotto
+            esiti.append({"codice": percorso.name, "stato": "errore", "errore": str(exc)})
 
     # Quando si indicizza l'insieme completo, l'indice deve rispecchiare solo quelle cartelle.
     if pulisci:

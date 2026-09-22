@@ -58,6 +58,10 @@ qualsiasi momento, una per riga) e il pulsante **«Salva e indicizza»**. Premil
 programma dice quanti file ha trovato in ciascuna cartella e quanti ne ha letti. Finché non lo
 fai, il contatore «Documenti indicizzati» resta a zero. Ripeti ogni volta che i documenti cambiano.
 
+Su una cartella di rete con centinaia di documenti la prima lettura dura parecchi minuti: una barra
+mostra a che punto è e quale file sta leggendo. Nel frattempo si possono usare le altre schede, e
+se si ricarica la pagina l'avanzamento riprende a mostrarsi.
+
 Per chiudere: `Ctrl+C` nella finestra nera, oppure chiudila.
 Per rifare le domande iniziali: `python sgs.py configura`.
 

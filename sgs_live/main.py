@@ -5,6 +5,7 @@ import csv
 import io
 import json
 import shutil
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -341,10 +342,51 @@ def elenco_documenti() -> list[dict]:
                  "ORDER BY tema, codice")
 
 
+# L'indicizzazione di una condivisione con centinaia di documenti dura minuti:
+# viene eseguita a parte e l'interfaccia ne segue l'avanzamento.
+AVANZAMENTO: dict = {"in_corso": False, "fatti": 0, "totale": 0, "corrente": "",
+                     "esiti": [], "iniziata_il": None, "finita_il": None, "errore": None}
+_blocco = threading.Lock()
+
+
+def _indicizza_in_fondo(utente: str, forza: bool) -> None:
+    def passo(fatti: int, totale: int, nome: str) -> None:
+        AVANZAMENTO.update(fatti=fatti, totale=totale, corrente=nome)
+    try:
+        esiti = indicizza_cartella(utente=utente, forza=forza, avanzamento=passo)
+        AVANZAMENTO.update(esiti=esiti, errore=None)
+    except Exception as exc:
+        AVANZAMENTO.update(esiti=[], errore=str(exc))
+    finally:
+        AVANZAMENTO.update(in_corso=False, corrente="", finita_il=adesso())
+
+
 @app.post("/api/indicizza")
 def indicizza(corpo: dict = Body(default={})) -> dict:
-    esiti = indicizza_cartella(utente=corpo.get("utente") or "operatore", forza=bool(corpo.get("forza")))
-    return {"esiti": esiti, "totale": len(esiti)}
+    with _blocco:
+        if AVANZAMENTO["in_corso"]:
+            raise HTTPException(409, "Un'indicizzazione è già in corso.")
+        AVANZAMENTO.update(in_corso=True, fatti=0, totale=0, corrente="", esiti=[],
+                           iniziata_il=adesso(), finita_il=None, errore=None)
+    threading.Thread(
+        target=_indicizza_in_fondo,
+        args=(corpo.get("utente") or "operatore", bool(corpo.get("forza"))),
+        daemon=True,
+    ).start()
+    return {"avviata": True}
+
+
+@app.get("/api/indicizza/stato")
+def stato_indicizzazione() -> dict:
+    fatto = AVANZAMENTO.copy()
+    if not fatto["in_corso"]:
+        fatto["riepilogo"] = {}
+        for e in fatto["esiti"]:
+            fatto["riepilogo"][e["stato"]] = fatto["riepilogo"].get(e["stato"], 0) + 1
+        fatto["problemi"] = [e for e in fatto["esiti"] if e["stato"] in ("errore", "vuoto")][:20]
+        fatto["totale_file"] = len(fatto["esiti"])
+    fatto.pop("esiti", None)
+    return fatto
 
 
 @app.post("/api/documenti/carica")

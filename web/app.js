@@ -444,7 +444,10 @@ function riepilogoCartelle(cartelle) {
     cartelle.map((k) => `<tr><td><code>${esc(k.percorso)}</code></td>` +
       `<td>${k.raggiungibile ? "raggiungibile"
         : '<strong style="color:var(--intervento)">non raggiungibile</strong>'}</td>` +
-      `<td><strong>${k.utili}</strong></td><td>${k.esclusi}</td><td>${k.altri}</td></tr>`).join("") +
+      `<td><strong>${k.utili}</strong></td><td>${k.esclusi}</td>` +
+      `<td>${k.altri}${Object.keys(k.estensioni_escluse || {}).length
+        ? `<br><small style="color:var(--testo-tenue)">${esc(Object.entries(k.estensioni_escluse)
+            .map(([e, n]) => `${e} (${n})`).join(", "))}</small>` : ""}</td></tr>`).join("") +
     "</tbody></table>";
 }
 
@@ -470,25 +473,68 @@ $("#btn-salva-cartelle").addEventListener("click", async () => {
 });
 
 async function avviaIndicizzazione() {
-  const bottone = $("#btn-reindicizza");
-  bottone.disabled = true;
-  const etichetta = bottone.textContent;
-  bottone.textContent = "Indicizzazione in corso…";
   try {
-    const r = await api("/api/indicizza", { method: "POST", body: JSON.stringify({ utente: stato.utente || "operatore" }) });
-    const riepilogo = r.esiti.reduce((acc, e) => { acc[e.stato] = (acc[e.stato] || 0) + 1; return acc; }, {});
-    const righe = Object.entries(riepilogo).map(([k, v]) => `${v} ${k.replace("_", " ")}`).join(", ");
-    $("#esito-cartelle").innerHTML +=
-      `<div style="margin-top:8px"><strong>Indicizzazione completata.</strong> File esaminati: ${r.totale} — ${esc(righe)}.</div>`;
-    const errori = r.esiti.filter((e) => e.stato === "errore" || e.stato === "vuoto");
-    if (errori.length) {
-      $("#esito-cartelle").innerHTML += "<div style=\"margin-top:6px\">File non letti:<ul>" +
-        errori.slice(0, 10).map((e) => `<li><code>${esc(e.codice)}</code> — ${esc(e.errore || e.avviso || e.stato)}</li>`).join("") +
-        "</ul></div>";
+    await api("/api/indicizza", { method: "POST", body: JSON.stringify({ utente: stato.utente || "operatore" }) });
+  } catch (e) {
+    if (!/in corso/i.test(e.message)) { alert(e.message); return; }
+  }
+  await seguiIndicizzazione();
+}
+
+function riquadroAvanzamento() {
+  let riquadro = $("#avanzamento");
+  if (!riquadro) {
+    riquadro = document.createElement("div");
+    riquadro.id = "avanzamento";
+    riquadro.className = "avanzamento";
+    $("#esito-cartelle").appendChild(riquadro);
+  }
+  return riquadro;
+}
+
+async function seguiIndicizzazione() {
+  const bottone = $("#btn-reindicizza");
+  const riquadro = riquadroAvanzamento();
+  bottone.disabled = true;
+  $("#btn-salva-cartelle").disabled = true;
+  try {
+    for (;;) {
+      const s = await api("/api/indicizza/stato");
+      if (!s.in_corso) {
+        riquadro.remove();
+        if (s.errore) { alert(`Indicizzazione interrotta: ${s.errore}`); break; }
+        const righe = Object.entries(s.riepilogo || {})
+          .map(([k, v]) => `${v} ${k.replace(/_/g, " ")}`).join(", ");
+        $("#esito-cartelle").innerHTML +=
+          `<div style="margin-top:8px"><strong>Indicizzazione completata.</strong> ` +
+          `File esaminati: ${s.totale_file || 0}${righe ? ` — ${esc(righe)}` : ""}.</div>` +
+          ((s.problemi || []).length
+            ? `<div style="margin-top:6px">File non letti (primi ${s.problemi.length}):<ul>` +
+              s.problemi.map((e) => `<li><code>${esc(e.codice)}</code> — ${esc(e.errore || e.avviso || e.stato)}</li>`).join("") +
+              "</ul></div>"
+            : "");
+        await Promise.all([caricaDocumenti(), caricaStato(),
+                           api("/api/configurazione").then((c) => { stato.configurazione = c; })]);
+        break;
+      }
+      const quota = s.totale ? Math.round((s.fatti / s.totale) * 100) : 0;
+      bottone.textContent = `Indicizzazione… ${s.fatti}/${s.totale || "?"}`;
+      riquadro.innerHTML =
+        `<strong>Lettura dei documenti in corso: ${s.fatti} di ${s.totale || "?"}</strong> (${quota}%)` +
+        `<div class="barra"><i style="width:${quota}%"></i></div>` +
+        `<div class="corrente">${esc(s.corrente || "")}</div>` +
+        `<div class="corrente">Su una cartella di rete con centinaia di documenti può durare parecchi minuti. ` +
+        `Puoi lasciare la finestra aperta e continuare a usare le altre schede.</div>`;
+      await new Promise((r) => setTimeout(r, 1500));
     }
-    await Promise.all([caricaDocumenti(), caricaStato()]);
-  } catch (e) { alert(e.message); }
-  finally { bottone.disabled = false; bottone.textContent = etichetta; }
+  } catch (e) {
+    riquadro.remove();
+    alert(e.message);
+  } finally {
+    bottone.disabled = false;
+    bottone.textContent = "Reindicizza cartelle";
+    $("#btn-salva-cartelle").disabled = false;
+  }
 }
 
 $("#btn-reindicizza").addEventListener("click", avviaIndicizzazione);
@@ -569,6 +615,9 @@ function applicaConfigurazione(c) {
     applicaConfigurazione(stato.configurazione);
   } catch (_) {}
   await caricaStato();
+  try {
+    if ((await api("/api/indicizza/stato")).in_corso) seguiIndicizzazione();
+  } catch (_) {}
   for (const m of await api(`/api/conversazione/${stato.sessione}`)) {
     aggiungiMessaggio(m.ruolo === "utente" ? "utente" : "assistente", m.testo);
   }
