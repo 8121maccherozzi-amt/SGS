@@ -62,17 +62,54 @@ echo      Va segnalato all'assistenza informatica.
 goto fine
 
 :assente
-echo [--] Python NON risulta installato, oppure non e' raggiungibile
-echo      dal prompt dei comandi.
+echo [--] Python non risponde dal prompt dei comandi.
+echo      Cerco se e' comunque presente sul computer, installato da
+echo      qualche altro programma (Anaconda, software tecnico, ecc.)...
 echo.
-echo   Prima di rinunciare, controlla anche qui:
-echo     - menu Start, cerca "Python"
-echo     - cartella  %%LOCALAPPDATA%%\Programs\Python
-echo     - cartella  C:\Program Files\Python311  (o Python312, Python313)
+
+set "NASCOSTO="
+for %%D in (
+  "%LOCALAPPDATA%\Programs\Python"
+  "%LOCALAPPDATA%\Microsoft\WindowsApps"
+  "%LOCALAPPDATA%\Continuum"
+  "%USERPROFILE%\Anaconda3"
+  "%USERPROFILE%\Miniconda3"
+  "%USERPROFILE%\AppData\Local\anaconda3"
+  "C:\Python313" "C:\Python312" "C:\Python311" "C:\Python310"
+  "C:\Program Files\Python313" "C:\Program Files\Python312"
+  "C:\Program Files\Python311" "C:\Program Files\Python310"
+  "C:\ProgramData\Anaconda3" "C:\Anaconda3"
+) do call :cerca %%D
+
+if defined NASCOSTO goto trovato_nascosto
+
+echo   Nessuna installazione trovata nelle posizioni consuete.
 echo.
-echo   Se davvero non c'e': l'installazione "solo per l'utente corrente"
-echo   da python.org spesso NON richiede i diritti di amministratore.
-echo   Se i criteri aziendali la bloccano, serve una richiesta all'IT.
+echo   Cosa puoi provare, in ordine:
+echo     1) Scrivi solo  python  nel prompt e premi Invio: se si apre il
+echo        Microsoft Store, prova a installarlo da li' (non serve
+echo        l'amministratore; spesso pero' e' bloccato in azienda).
+echo     2) Installa da https://www.python.org/downloads/windows/
+echo        scegliendo "Install for me only" / "solo per me".
+echo     3) Se entrambe sono bloccate, serve una richiesta all'assistenza
+echo        informatica.
+goto fine
+
+:trovato_nascosto
+echo.
+echo [OK] Trovata un'installazione di Python qui:
+echo      %NASCOSTO%
+echo.
+echo   Non e' raggiungibile dal prompt, ma il programma puo' usarla lo stesso.
+echo   Segnala questo percorso e ti indico come avviare SGS Live con questa.
+goto fine
+
+:cerca
+if defined NASCOSTO goto :eof
+if exist "%~1\python.exe" set "NASCOSTO=%~1\python.exe"
+if defined NASCOSTO goto :eof
+for /d %%S in ("%~1\Python3*") do if exist "%%~S\python.exe" set "NASCOSTO=%%~S\python.exe"
+goto :eof
 
 :fine
 echo.
