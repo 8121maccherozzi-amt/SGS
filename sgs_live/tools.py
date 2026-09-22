@@ -246,7 +246,7 @@ def _leggi_estratto(par: dict) -> tuple[str, list[dict]]:
 
 
 def _elenca_documenti(par: dict) -> tuple[str, list[dict]]:
-    sql = ("SELECT tema, codice, titolo, tipo, sistema, revisione, "
+    sql = ("SELECT tema, codice, padre AS dipende_da, titolo, tipo, sistema, revisione, "
            "percorso_relativo AS cartelle, n_chunk FROM documenti WHERE 1=1")
     p: list[Any] = []
     if par.get("sistema"):

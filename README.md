@@ -121,6 +121,7 @@ dati vengono letti da fonti diverse:
 | **Tema** | Nome della cartella di primo livello, ignorando la numerazione | `3 - Formazione` → Formazione |
 | **Tipologia** | Sigla nel nome del file | `TGV_IST_04` → Istruzione operativa |
 | **Sistema** | Prefisso nel nome del file; in mancanza, una cartella che nomini il sistema | `MET_PRC_06` → MET |
+| **Documento padre** | Parte del codice che precede la sottosigla | `TGV_PRC_06_RGS_01` dipende da `TGV_PRC_06` |
 
 Aree tematiche riconosciute (`TEMI` in `sgs_live/ingest.py`, con i sinonimi che le richiamano):
 Manuale SGS · Procedure Organizzative · Formazione · Valutazione dei rischi · Regolamento di
@@ -141,8 +142,9 @@ Conseguenze pratiche:
   fornita a ogni domanda;
 - ogni estratto mostra il tema di provenienza.
 
-Codice, tipo, sistema e revisione sono dedotti dal nome file secondo la naming convention del SGS —
-`TGV_PRC_11 - Monitoraggio prestazioni rev 02.pdf`, `MET_PRC_06_RGS_01 - Hazard Log rev 03.xlsx`.
+Il riconoscimento del nome file tollera le varianti che capitano nella pratica: separatore ` - `,
+`-`, `_` o trattino lungo, numerazione a una o più cifre, maiuscole o minuscole, spazi al posto
+degli underscore, e codice non in prima posizione (`Copia di TGV_PRC_06 - …`).
 Se due file diversi producono lo stesso codice, il secondo riceve un suffisso (`TGV_PRC_11#2`).
 Le cartelle si cambiano dalla dashboard (scheda Documenti) oppure in `.env`. Cambiandole, i
 documenti che non appartengono più alle cartelle scelte escono dall'indice, con registrazione in

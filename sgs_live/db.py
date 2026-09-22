@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS documenti (
     cartella TEXT,
     percorso_relativo TEXT,
     tema TEXT,
+    padre TEXT,
     note TEXT
 );
 
@@ -169,6 +170,7 @@ MIGRAZIONI = [
     ("documenti", "cartella", "TEXT"),
     ("documenti", "percorso_relativo", "TEXT"),
     ("documenti", "tema", "TEXT"),
+    ("documenti", "padre", "TEXT"),
     ("chunk", "contesto", "TEXT"),
 ]
 

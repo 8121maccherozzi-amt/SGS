@@ -25,6 +25,12 @@ RE_CODICE = re.compile(
     rf"(?:[_\- ]?(RGS|MOD|IST|ALL)[_\- ]?(\d{{1,4}}))?",
     re.IGNORECASE,
 )
+# Stesso schema non ancorato: intercetta i file rinominati («Copia di TGV_PRC_06 - …»).
+RE_CODICE_OVUNQUE = re.compile(
+    rf"(?<![A-Za-z0-9])(?:(TGV|MET|FGC|FPG|FIL|FER)[_\- ]?)?({SIGLE})(?:[_\- ]?(\d{{1,4}}))?"
+    rf"(?:[_\- ]?(RGS|MOD|IST|ALL)[_\- ]?(\d{{1,4}}))?",
+    re.IGNORECASE,
+)
 RE_SOLO_SISTEMA = re.compile(r"^(TGV|MET|FGC|FPG|FIL|FER)[_\- ]", re.IGNORECASE)
 RE_REVISIONE = re.compile(r"\brev\.?\s*([0-9]{1,2}(?:\.[0-9]{1,2})?)", re.IGNORECASE)
 
@@ -101,15 +107,15 @@ def _impronta(percorso: Path) -> str:
 
 
 def metadati_da_nome(percorso: Path) -> dict:
-    """Deduce codice, tipologia, sistema e revisione dal nome del file.
+    """Deduce codice, tipologia, sistema, revisione e documento padre dal nome del file.
 
-    La tipologia viene SEMPRE dalla sigla (POL, MSGS, PRC, IST, RDE, RGS, ...):
+    La tipologia viene SEMPRE dalla sigla (POL, MSGS, PRC, IST, RDE, RGS, MOD, ...):
     è l'unico dato che la stabilisce, perché le cartelle esprimono il tema.
     """
     nome = percorso.stem
-    sistema, tipo, codice = "TGV", "Altro", None
+    sistema, tipo, codice, padre = "TGV", "Altro", None, None
 
-    m = RE_CODICE.match(nome)
+    m = RE_CODICE.match(nome) or RE_CODICE_OVUNQUE.search(nome)
     if m and m.group(2):
         sigla = m.group(2).upper()
         tipo = TIPI_DOCUMENTO.get(sigla, "Altro")
@@ -122,30 +128,28 @@ def metadati_da_nome(percorso: Path) -> dict:
             parti.append(m.group(3).zfill(2))
         if m.group(4) and m.group(5):
             sottosigla = m.group(4).upper()
+            padre = "_".join(parti)      # es. TGV_PRC_06 per TGV_PRC_06_RGS_01
             parti.extend([sottosigla, m.group(5).zfill(2)])
             tipo = TIPI_DOCUMENTO.get(sottosigla, tipo)
         codice = "_".join(parti)
+        resto = (nome[:m.start()] + " " + nome[m.end():])
     else:
         prefisso = RE_SOLO_SISTEMA.match(nome)
         if prefisso:
             sistema = prefisso.group(1).upper()
             if sistema == "FER":
                 sistema = "TGV"
+        resto = nome
 
-    titolo = nome
-    for separatore in (" - ", " – ", " — "):
-        if separatore in nome:
-            testa, coda = nome.split(separatore, 1)
-            titolo = coda.strip() if codice or RE_SOLO_SISTEMA.match(testa) else nome
-            break
-
+    titolo = re.sub(r"\s+", " ", RE_REVISIONE.sub("", resto)).strip(" -–—_.")
     rev = RE_REVISIONE.search(nome)
     return {
         "codice": codice or nome[:80],
-        "titolo": RE_REVISIONE.sub("", titolo).strip(" -_") or nome,
+        "titolo": titolo or codice or nome,
         "tipo": tipo,
         "sistema": sistema,
         "revisione": rev.group(1) if rev else None,
+        "padre": padre,
     }
 
 
@@ -305,7 +309,8 @@ def indicizza_file(percorso: Path, *, utente: str = "sistema", forza: bool = Fal
     # Il contesto cercabile comprende tema e sottocartelle: nominarli in una domanda
     # deve bastare a recuperare i documenti che stanno lì.
     contesto = " · ".join(filter(None, [
-        meta["codice"], meta["titolo"], meta["tipo"], tema, " / ".join(nomi_cartelle)]))
+        meta["codice"], meta["titolo"], meta["tipo"], meta.get("padre"), tema,
+        " / ".join(nomi_cartelle)]))
 
     with connessione() as con:
         meta["codice"], esistente = _codice_disponibile(con, meta["codice"], percorso)
@@ -324,21 +329,23 @@ def indicizza_file(percorso: Path, *, utente: str = "sistema", forza: bool = Fal
             con.execute(
                 """UPDATE documenti SET codice=?, titolo=?, tipo=?, sistema=?, revisione=?,
                        percorso=?, impronta=?, n_chunk=?, indicizzato_il=?, cartella=?,
-                       percorso_relativo=?, tema=? WHERE id=?""",
+                       percorso_relativo=?, tema=?, padre=? WHERE id=?""",
                 (meta["codice"], meta["titolo"], meta["tipo"], meta["sistema"], meta["revisione"],
                  str(percorso), impronta, len(pezzi), adesso(),
-                 str(cartella) if cartella else None, percorso_relativo, tema, doc_id),
+                 str(cartella) if cartella else None, percorso_relativo, tema,
+                 meta.get("padre"), doc_id),
             )
             azione = "reindicizzato"
         else:
             cur = con.execute(
                 """INSERT INTO documenti (codice, titolo, tipo, sistema, revisione, percorso,
                                           impronta, n_chunk, indicizzato_il, cartella,
-                                          percorso_relativo, tema)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+                                          percorso_relativo, tema, padre)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (meta["codice"], meta["titolo"], meta["tipo"], meta["sistema"], meta["revisione"],
                  str(percorso), impronta, len(pezzi), adesso(),
-                 str(cartella) if cartella else None, percorso_relativo, tema),
+                 str(cartella) if cartella else None, percorso_relativo, tema,
+                 meta.get("padre")),
             )
             doc_id = cur.lastrowid
             azione = "indicizzato"

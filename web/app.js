@@ -412,7 +412,9 @@ async function caricaDocumenti() {
       <td>${d.tema ? `<span class="pillola">${esc(d.tema)}</span>` : "—"}${
         (d.percorso_relativo || "").includes("/")
           ? `<br><small style="color:var(--testo-tenue)">${esc(d.percorso_relativo.split("/").slice(1).join(" / "))}</small>` : ""}</td>
-      <td><strong>${esc(d.codice)}</strong></td><td>${esc(d.titolo)}</td>
+      <td><strong>${esc(d.codice)}</strong>${d.padre
+        ? `<br><small style="color:var(--testo-tenue)">di ${esc(d.padre)}</small>` : ""}</td>
+      <td>${esc(d.titolo)}</td>
       <td>${esc(d.tipo)}</td><td>${esc(d.sistema)}</td><td>${esc(d.revisione || "—")}</td>
       <td>${d.n_chunk}</td><td>${esc((d.indicizzato_il || "").slice(0, 16).replace("T", " "))}</td>
       <td><a href="/api/documenti/${d.id}/file" download><button>Apri</button></a></td></tr>`).join("") +

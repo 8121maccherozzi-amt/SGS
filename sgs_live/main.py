@@ -336,8 +336,8 @@ def salva_misura(indicatore_id: int, corpo: dict = Body(...)) -> dict:
 
 @app.get("/api/documenti")
 def elenco_documenti() -> list[dict]:
-    return righe("SELECT id, tema, codice, titolo, tipo, sistema, revisione, stato, n_chunk, "
-                 "indicizzato_il, percorso, percorso_relativo FROM documenti "
+    return righe("SELECT id, tema, codice, padre, titolo, tipo, sistema, revisione, stato, "
+                 "n_chunk, indicizzato_il, percorso, percorso_relativo FROM documenti "
                  "ORDER BY tema, codice")
 
 
