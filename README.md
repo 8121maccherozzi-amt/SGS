@@ -9,6 +9,7 @@ esplicita dell'operatore e tracciabilità completa.
 
 | Funzione | Descrizione |
 |---|---|
+| Indicizzazione | Manuale, Procedure, Istruzioni Operative e Registri in PDF, DOCX, XLSX/XLSM, TXT, MD, letti da una o più cartelle indicate dall'utente |
 | Ricerca documentale | Risponde citando codice documento, revisione, pagina e sezione (per i registri Excel, il foglio) |
 | Estratti letterali | Restituisce il testo originale del passaggio, non una parafrasi |
 | Registro normative | TGV_MSGS_RGS_01: riferimenti, applicabilità per sistema, stato, impatto, azioni, scadenze |
@@ -17,30 +18,62 @@ esplicita dell'operatore e tracciabilità completa.
 | Tracciabilità | Ogni scrittura registrata con operatore, data/ora, valore precedente e successivo, origine |
 | Esportazioni | CSV di norme, indicatori, misure, proposte e log di audit |
 
-## Avvio rapido
+## Provarlo (anche senza sapere programmare)
 
-```bash
-./avvia.sh                       # crea .venv, installa le dipendenze, avvia il server
-# poi: inserire ANTHROPIC_API_KEY in .env e rilanciare
-```
+Il programma gira sul tuo computer. Servono circa dieci minuti la prima volta.
 
-In alternativa, senza lo script:
+**1. Installa Python** (una sola volta, è il motore su cui gira il programma)
+Su Windows: <https://www.python.org/downloads/windows/> — nella prima schermata dell'installazione
+spunta **«Add python.exe to PATH»**. Su macOS è già presente.
+
+**2. Scarica il programma**
+Su GitHub, nella pagina del progetto: pulsante verde **Code → Download ZIP**. Estrai la cartella
+dove preferisci, per esempio sul Desktop.
+
+**3. Avvialo**
+- Windows: doppio clic su **`avvia.bat`**
+- macOS / Linux: doppio clic su **`avvia.sh`** (o `./avvia.sh` dal Terminale)
+
+La prima volta prepara tutto da solo e poi ti fa tre domande:
+- **dove sono i documenti del SGS** — incolla il percorso della cartella (va bene anche un'unità di
+  rete, es. `S:\SGS\Documentazione`); puoi indicarne più di una separandole con `;`
+- **sola lettura?** — rispondi sì: il programma potrà solo leggere e non scriverà mai in quella cartella
+- **come vuoi usarlo** — scegli **1** per provarlo subito: cerca nei documenti, tutto resta sul tuo PC
+  e non serve nessuna chiave. La **2** aggiunge l'assistente che risponde a domande scritte
+  normalmente, e richiede una chiave a pagamento
+
+Poi il browser si apre da solo su `http://127.0.0.1:8770`.
+
+**4. Prima indicizzazione**
+Vai su **Documenti → Reindicizza cartelle** e aspetta. Da quel momento puoi cercare.
+Ripeti ogni volta che i documenti cambiano.
+
+Per chiudere: `Ctrl+C` nella finestra nera, oppure chiudila.
+Per rifare le domande iniziali: `python sgs.py configura`.
+
+Se preferisci partire con dati finti per capire come funziona, prima dell'avvio esegui
+`python sgs.py esempi`: carica 5 norme, 6 indicatori e un documento di prova.
+
+## Avvio rapido (per chi usa il terminale)
 
 ```bash
 python3 -m venv .venv && ./.venv/bin/pip install -r requirements.txt
-cp .env.example .env             # inserire ANTHROPIC_API_KEY
-./.venv/bin/python sgs.py esempi # dati dimostrativi (facoltativo)
-./.venv/bin/python sgs.py avvia  # http://127.0.0.1:8770
+./.venv/bin/python sgs.py configura   # scrive .env rispondendo a tre domande
+./.venv/bin/python sgs.py esempi      # dati dimostrativi (facoltativo)
+./.venv/bin/python sgs.py avvia       # http://127.0.0.1:8770
 ```
 
-La chiave API si ottiene su <https://console.anthropic.com/settings/keys>.
+In alternativa si può copiare `.env.example` in `.env` e compilarlo a mano. La chiave API,
+necessaria solo in modalità `assistito`, si ottiene su
+<https://console.anthropic.com/settings/keys>.
 
 ### Comandi
 
 | Comando | Effetto |
 |---|---|
-| `python3 sgs.py avvia` | Avvia la dashboard su `http://127.0.0.1:8770` |
-| `python3 sgs.py indicizza [--forza]` | (Re)indicizza la cartella `documenti/` |
+| `python3 sgs.py avvia` | Avvia la dashboard e apre il browser (`--niente-browser` per evitarlo) |
+| `python3 sgs.py configura` | Rifà la configurazione guidata (cartelle, sola lettura, modalità) |
+| `python3 sgs.py indicizza [--forza] [--cartella X]` | (Re)indicizza le cartelle sorgente |
 | `python3 sgs.py esempi` | Carica dati dimostrativi (5 norme, 6 IPS, 1 documento fittizio) |
 | `python3 sgs.py importa file.csv --tipo norme\|indicatori` | Importa un registro esistente esportato in CSV |
 

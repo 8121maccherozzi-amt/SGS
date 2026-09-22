@@ -10,8 +10,12 @@ from __future__ import annotations
 
 import argparse
 import csv
+import os
+import socket
 import shutil
 import sys
+import threading
+import webbrowser
 from pathlib import Path
 
 from sgs_live.config import (CARTELLA_DOCUMENTI, CARTELLE_DOCUMENTI, INDIRIZZO, MODALITA,
@@ -71,7 +75,10 @@ def _importa(percorso: Path, tipo: str, utente: str) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser(description="SGS Live")
     sotto = parser.add_subparsers(dest="comando", required=True)
-    sotto.add_parser("avvia")
+    p_avvia = sotto.add_parser("avvia")
+    p_avvia.add_argument("--niente-browser", action="store_true",
+                         help="non aprire automaticamente il browser")
+    sotto.add_parser("configura")
     p_ind = sotto.add_parser("indicizza")
     p_ind.add_argument("--forza", action="store_true",
                        help="reindicizza anche i file non modificati")
@@ -86,12 +93,35 @@ def main() -> int:
 
     inizializza()
 
+    if argomenti.comando == "configura":
+        from sgs_live.configura import esegui
+        esegui(forza=True)
+        print("\nOra puoi avviare il programma.")
+        return 0
+
     if argomenti.comando == "avvia":
+        if not (RADICE / ".env").exists():
+            from sgs_live.configura import esegui
+            esegui()
+            # La configurazione si legge all'avvio: riparto per applicarla.
+            os.execv(sys.executable, [sys.executable, *sys.argv])
+
+        with socket.socket() as sonda:
+            if sonda.connect_ex((INDIRIZZO, PORTA)) == 0:
+                print(f"\nLa porta {PORTA} è già occupata: probabilmente SGS Live è già aperto.")
+                print(f"Prova ad andare su http://{INDIRIZZO}:{PORTA} nel browser.")
+                print("Se invece è un altro programma, cambia SGS_PORTA nel file .env.\n")
+                return 1
+
         import uvicorn
-        print(f"SGS Live → http://{INDIRIZZO}:{PORTA}")
+        indirizzo = f"http://{INDIRIZZO}:{PORTA}"
+        print(f"SGS Live → {indirizzo}")
         print(f"  modalità: {MODALITA}" + ("  (sola lettura)" if SOLA_LETTURA else ""))
         for cartella in CARTELLE_DOCUMENTI:
             print(f"  cartella: {cartella}" + ("" if cartella.exists() else "  ⚠ non raggiungibile"))
+        print("\nPer chiudere il programma: Ctrl+C in questa finestra.\n")
+        if not argomenti.niente_browser:
+            threading.Timer(1.5, webbrowser.open, [indirizzo]).start()
         uvicorn.run("sgs_live.main:app", host=INDIRIZZO, port=PORTA, reload=False)
         return 0
 
