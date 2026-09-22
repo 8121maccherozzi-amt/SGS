@@ -22,9 +22,17 @@ esplicita dell'operatore e tracciabilità completa.
 
 Il programma gira sul tuo computer. Servono circa dieci minuti la prima volta.
 
-**1. Installa Python** (una sola volta, è il motore su cui gira il programma)
-Su Windows: <https://www.python.org/downloads/windows/> — nella prima schermata dell'installazione
-spunta **«Add python.exe to PATH»**. Su macOS è già presente.
+**1. Verifica se Python c'è già** (è il motore su cui gira il programma; spesso sui PC aziendali
+è già installato)
+Doppio clic su **`verifica.bat`** (Windows) o `./verifica.sh` (macOS/Linux): non installa e non
+modifica nulla, dice soltanto se il computer è pronto.
+In alternativa, a mano: tasto Windows → scrivi `cmd` → Invio → scrivi `py --version` → Invio.
+Se compare `Python 3.10` o superiore, ci siamo.
+
+Se manca: <https://www.python.org/downloads/windows/> — nella prima schermata spunta
+**«Add python.exe to PATH»**, e scegli l'installazione **«solo per me»**, che di norma non
+richiede i diritti di amministratore. Se i criteri aziendali la bloccano, serve una richiesta
+all'assistenza informatica.
 
 **2. Scarica il programma**
 Su GitHub, nella pagina del progetto: pulsante verde **Code → Download ZIP**. Estrai la cartella
@@ -71,6 +79,7 @@ necessaria solo in modalità `assistito`, si ottiene su
 
 | Comando | Effetto |
 |---|---|
+| `verifica.bat` / `./verifica.sh` | Controlla se il computer ha i requisiti, senza installare nulla |
 | `python3 sgs.py avvia` | Avvia la dashboard e apre il browser (`--niente-browser` per evitarlo) |
 | `python3 sgs.py configura` | Rifà la configurazione guidata (cartelle, sola lettura, modalità) |
 | `python3 sgs.py indicizza [--forza] [--cartella X]` | (Re)indicizza le cartelle sorgente |
