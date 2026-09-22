@@ -74,7 +74,7 @@ def _importa(percorso: Path, tipo: str, utente: str) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="SGS Live")
-    sotto = parser.add_subparsers(dest="comando", required=True)
+    sotto = parser.add_subparsers(dest="comando")
     p_avvia = sotto.add_parser("avvia")
     p_avvia.add_argument("--niente-browser", action="store_true",
                          help="non aprire automaticamente il browser")
@@ -89,6 +89,8 @@ def main() -> int:
     p_imp.add_argument("file")
     p_imp.add_argument("--tipo", choices=["norme", "indicatori"], required=True)
     p_imp.add_argument("--utente", default="importazione")
+    # Senza argomenti (tipico del doppio clic sull'icona) si avvia la dashboard.
+    parser.set_defaults(comando="avvia", niente_browser=False)
     argomenti = parser.parse_args()
 
     inizializza()

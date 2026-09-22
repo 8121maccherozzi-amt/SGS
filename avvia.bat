@@ -25,7 +25,9 @@ if errorlevel 1 goto errore
 if errorlevel 1 goto errore
 
 :avvio
-".venv\Scripts\python.exe" sgs.py %*
+set "COMANDO=%*"
+if not defined COMANDO set "COMANDO=avvia"
+".venv\Scripts\python.exe" sgs.py %COMANDO%
 echo.
 echo SGS Live e' stato chiuso.
 pause
