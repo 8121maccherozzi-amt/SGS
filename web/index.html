@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SGS Live — AMT</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2310527a'/%3E%3Cpath d='M16 5l9 4v7c0 6-4 9.5-9 11-5-1.5-9-5-9-11V9z' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+  <h1>SGS <span>Live</span></h1>
+  <div class="sottotitolo">Sistema di Gestione della Sicurezza · AMT · MET / FGC / FPG / FIL</div>
+  <div class="spaziatore"></div>
+  <label style="font-size:12.5px;color:var(--testo-tenue)">Operatore
+    <input id="utente" placeholder="Nome e cognome" style="margin-left:6px;width:190px">
+  </label>
+  <button id="btn-aggiorna" title="Ricarica i dati">Aggiorna</button>
+</header>
+
+<section class="kpi" id="kpi"></section>
+
+<nav id="schede">
+  <button data-scheda="assistente" class="attivo">Assistente</button>
+  <button data-scheda="proposte">Modifiche da confermare<span class="badge" id="badge-proposte" hidden>0</span></button>
+  <button data-scheda="norme">Registro norme</button>
+  <button data-scheda="indicatori">Indicatori IPS</button>
+  <button data-scheda="documenti">Documenti</button>
+  <button data-scheda="audit">Tracciabilità</button>
+</nav>
+
+<main>
+  <!-- ASSISTENTE -->
+  <section class="pannello attivo" id="pannello-assistente">
+    <div class="suggerimenti">
+      <button>Mostrami l'estratto del documento che parla di formazione della manutenzione veicoli</button>
+      <button>Quali IPS sono sopra la soglia di allarme?</button>
+      <button>Registra IPS03 MET per 2026-Q1 con valore 0,12</button>
+      <button>Aggiungi al registro norme la linea guida ANSFISA sulle verifiche periodiche</button>
+    </div>
+    <div class="chat">
+      <div class="messaggi" id="messaggi">
+        <div class="vuoto">Interroga il SGS in linguaggio naturale. Le risposte sui contenuti dei
+          documenti sono sempre corredate dal riferimento (codice, revisione, pagina, sezione).</div>
+      </div>
+      <div class="barra-invio">
+        <textarea id="domanda" placeholder="Es.: cosa prevede la TGV_PRC_11 sulle soglie di intervento? (Invio per inviare, Maiusc+Invio per andare a capo)"></textarea>
+        <button class="primario" id="btn-invia">Invia</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- PROPOSTE -->
+  <section class="pannello" id="pannello-proposte">
+    <div class="avviso"><strong>Controllo umano obbligatorio.</strong> L'assistente non scrive mai
+      direttamente su registri e indicatori: prepara proposte che diventano effettive solo dopo la
+      conferma di un operatore identificato, con registrazione nel log di tracciabilità.</div>
+    <div class="barra-strumenti">
+      <select id="filtro-proposte">
+        <option value="in_attesa">In attesa</option>
+        <option value="confermata">Confermate</option>
+        <option value="rifiutata">Rifiutate</option>
+        <option value="tutte">Tutte</option>
+      </select>
+    </div>
+    <div id="elenco-proposte"></div>
+  </section>
+
+  <!-- NORME -->
+  <section class="pannello" id="pannello-norme">
+    <div class="barra-strumenti">
+      <input id="cerca-norme" placeholder="Cerca riferimento, titolo, ambito…" style="min-width:250px">
+      <select id="filtro-stato-norme">
+        <option value="">Tutti gli stati</option>
+        <option value="vigente">Vigenti</option>
+        <option value="in_recepimento">In recepimento</option>
+        <option value="monitoraggio">In monitoraggio</option>
+        <option value="abrogata">Abrogate</option>
+      </select>
+      <button class="primario" id="btn-nuova-norma">Nuova voce</button>
+      <a href="/api/esporta/norme.csv" download><button>Esporta CSV</button></a>
+      <span style="color:var(--testo-tenue);font-size:12.5px">TGV_MSGS_RGS_01 — Registro normative di riferimento</span>
+    </div>
+    <div id="tabella-norme"></div>
+  </section>
+
+  <!-- INDICATORI -->
+  <section class="pannello" id="pannello-indicatori">
+    <div class="barra-strumenti">
+      <select id="filtro-sistema-ips"><option value="">Tutti i sistemi</option></select>
+      <button class="primario" id="btn-nuovo-ips">Nuovo indicatore</button>
+      <a href="/api/esporta/misure.csv" download><button>Esporta misure CSV</button></a>
+      <span style="color:var(--testo-tenue);font-size:12.5px">TGV_PRC_06_RGS_02 — raccolta trimestrale a cura del RSGS (TGV_PRC_11)</span>
+    </div>
+    <div id="tabella-indicatori"></div>
+  </section>
+
+  <!-- DOCUMENTI -->
+  <section class="pannello" id="pannello-documenti">
+    <div class="barra-strumenti">
+      <input type="file" id="file-documento" accept=".pdf,.docx,.txt,.md">
+      <button class="primario" id="btn-carica">Carica e indicizza</button>
+      <button id="btn-reindicizza">Reindicizza cartella</button>
+      <span id="info-cartella" style="color:var(--testo-tenue);font-size:12.5px"></span>
+    </div>
+    <div id="tabella-documenti"></div>
+  </section>
+
+  <!-- AUDIT -->
+  <section class="pannello" id="pannello-audit">
+    <div class="barra-strumenti">
+      <a href="/api/esporta/audit_log.csv" download><button>Esporta CSV</button></a>
+      <span style="color:var(--testo-tenue);font-size:12.5px">Registro immodificabile di tutte le scritture: chi, quando, valore precedente e successivo.</span>
+    </div>
+    <div id="tabella-audit"></div>
+  </section>
+</main>
+
+<dialog id="dialogo"><form method="dialog" id="form-dialogo"></form></dialog>
+<script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+codice;sistema;descrizione;unita_misura;tipo;verso;soglia_allarme;soglia_intervento;id_ep;responsabile;periodicita
+IPS01;MET;Numero di eventi significativi per milione di treni-km;n/Mtreni-km;reattivo;min;0.5;1.0;EP-01;RSGS;trimestrale
+IPS02;MET;Quota di decisioni di audit chiuse oltre il termine previsto;n. dec. chiuse in ritardo / n. dec. chiuse;proattivo;min;0.1;0.3;EP-04;RSGS;trimestrale
+IPS03;MET;Quota di interventi di manutenzione programmata eseguiti oltre la scadenza;n. interventi in ritardo / n. interventi programmati;proattivo;min;0.1;0.3;EP-07;RTEM;trimestrale
+IPS07;MET;Quota di personale manutentivo con abilitazione scaduta e non rinnovata;n. abilitazioni scadute / n. abilitazioni totali;proattivo;min;0.05;0.15;EP-07;RFAF;trimestrale
+IPS01;FPG;Numero di arresti non programmati dell'impianto per cause di sicurezza;n/trimestre;reattivo;min;2;5;EP-02;RSGS;trimestrale
+IPS04;FPG;Quota di ispezioni della dentiera eseguite rispetto al programma;n. ispezioni eseguite / n. ispezioni previste;proattivo;max;0.95;0.85;EP-05;RTEM;trimestrale
