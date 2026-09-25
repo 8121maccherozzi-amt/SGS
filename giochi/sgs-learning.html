@@ -241,6 +241,14 @@ table.rep td.okc{color:var(--green);font-weight:600}table.rep td.noc{color:var(-
 #certImg{width:100%;height:auto;display:block;border:1px solid var(--line);background:#f6f3ea}
 .field input[type=text]{background:#141922;color:var(--ink);border:1px solid var(--line);padding:8px 10px;border-radius:2px;font:inherit;width:100%}
 @media (max-width:560px){#xp{display:none}#toasts{top:calc(max(20px,env(safe-area-inset-top,0px)) + 150px)}#prompt{bottom:30%;white-space:normal;max-width:calc(100vw - 150px);left:18px;transform:none;font-size:15px}}
+/* Pacchetto contenuti: riga informativa, bozza, esito del caricamento */
+.packline{display:flex;gap:10px;flex-wrap:wrap;align-items:center;font:500 12px/1.4 var(--mono);color:var(--dim)}
+.packline b{font:700 11px/1 var(--mono);letter-spacing:.12em;padding:5px 7px;border:1px solid var(--line)}
+.packline b.draft{color:#1a1204;background:var(--amber);border-color:var(--amber)}
+.packline b.ok{color:#062312;background:var(--green);border-color:var(--green)}
+#packMsg{font-size:14px;line-height:1.5;color:#dfe5ec;max-height:40vh;overflow-y:auto}
+#packMsg ul{margin:6px 0 0;padding-left:18px}#packMsg li{margin-bottom:4px}
+#packMsg .e{color:#ffb3a8}#packMsg .w{color:#ffe0a0}#packMsg .okm{color:var(--green);font-weight:600}
 </style>
 <script type="importmap">
 { "imports": {
@@ -255,13 +263,21 @@ table.rep td.okc{color:var(--green);font-weight:600}table.rep td.noc{color:var(-
 
 <div id="title" class="screen" hidden>
   <div class="menu">
-    <div class="label">Corso Gestione della Circolazione · Modulo 1 · Stazione Brignole</div>
-    <h1 class="logo">SGS<br>Learning<span>Normativa di riferimento</span></h1>
-    <p class="lede">Primo giorno di corso, ma niente aula: la lezione si fa in stazione, con il servizio in corso. Dodici tappe tra atrio, ufficio, banchina e galleria. A ogni tappa trovi un <b>pannello</b> da studiare, un <b>referente</b> che ti spiega il suo ruolo, un <b>laboratorio</b> e un quiz. Alla fine, l'<b>esame di modulo</b> in aula.</p>
+    <div class="label" id="tLabel">Stazione Brignole</div>
+    <h1 class="logo">SGS<br>Learning<span id="tSub"></span></h1>
+    <p class="lede" id="tLede"></p>
+    <div class="packline" id="tPack"></div>
     <div class="stack">
       <button id="bPlay" class="btn primary" type="button">Inizia il percorso <small>Invio</small></button>
+      <button id="bLoad" class="btn" type="button">Carica modulo <small>.xlsx · .json</small></button>
       <button id="bHelp" class="btn" type="button">Comandi</button>
       <button id="bOpts" class="btn" type="button">Impostazioni</button>
+    </div>
+    <input id="packFile" type="file" accept=".xlsx,.xlsm,.json,application/json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
+    <div id="packPanel" class="panel" hidden aria-live="polite">
+      <div class="label" id="packHead">Modulo</div>
+      <div id="packMsg"></div>
+      <div class="stack" style="flex-direction:row;flex-wrap:wrap;gap:8px"><button id="bPickAgain" class="btn" type="button" style="padding:10px 14px;font-size:15px">Scegli un altro file</button><button id="bReset" class="btn" type="button" style="padding:10px 14px;font-size:15px" hidden>Torna al Modulo 1 predefinito</button></div>
     </div>
     <div id="helpPanel" class="panel" hidden>
       <div class="tabs" role="tablist"><button id="tabKb" role="tab" aria-selected="true" type="button">Tastiera e mouse</button><button id="tabTouch" role="tab" aria-selected="false" type="button">Touch</button></div>
@@ -349,7 +365,7 @@ table.rep td.okc{color:var(--green);font-weight:600}table.rep td.noc{color:var(-
     <div class="label" id="exRef"></div>
     <div id="exQ"></div>
     <div id="exOpts"></div>
-    <p class="note">Nessun riscontro durante la prova: gli esiti e le spiegazioni compaiono alla fine. Soglia di superamento: 7 risposte corrette su 10.</p>
+    <p class="note" id="exNote"></p>
   </div>
   <div class="exres" id="exRes" hidden>
     <div class="stack" style="gap:16px">
@@ -417,7 +433,7 @@ const esc = s => String(s).replace(/[&<>"']/g, ch => ({ '&':'&amp;', '<':'&lt;',
 /* Salvataggio locale: record e impostazioni */
 const STORE_KEY = 'sgsLearning.v1';
 const store = (() => {
-  const def = { best:0, exam:0, passed:false, name:'', runs:0, settings:{ quality:isTouch ? 'low' : 'high', sens:1, vol:0.8, inv:false, voice:false } };
+  const def = { best:0, exam:0, passed:false, name:'', runs:0, packs:{}, settings:{ quality:isTouch ? 'low' : 'high', sens:1, vol:0.8, inv:false, voice:false } };
   try { const s = JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); if (s && typeof s.best === 'number') return { ...def, ...s, settings:{ ...def.settings, ...(s.settings || {}) } }; } catch (e) { /* storage non disponibile */ }
   return def;
 })();
@@ -1304,25 +1320,23 @@ function drawStationPlan(x, w, h, opts = {}) {
   for (const [t, px, pz] of [['ATRIO', 20, 5.5], ['AULA', 4, 17.5], ['BANCHINA', 66, 12.3], ['BINARIO 1 · CANTIERE', 58, 5.8], ['BINARIO 2', 60, 23], ['GALLERIA', 104, 5.6], ['SSE', 112, 15]]) x.fillText(t, ox + px * s, oy + pz * s);
   return { ox, oy, s };
 }
-/* Totem didattico a due facce; la faccia principale riporta il pannello della tappa */
-function buildTotem(scene, tp) {
-  const [x, y, z] = tp.board.pos, ry = tp.board.ry, cx = Math.cos(ry), sx = -Math.sin(ry), fx = Math.sin(ry), fz = Math.cos(ry);
-  if (tp.board.wall) {
+/* Totem didattico a due facce (o pannello a parete): la grafica arriva dal pacchetto contenuti */
+function buildTotem(scene, key) {
+  const S = SLOTS[key], T = slotTex(key), [x, y, z] = S.pos, ry = S.ry, cx = Math.cos(ry), sx = -Math.sin(ry), fx = Math.sin(ry), fz = Math.cos(ry);
+  if (S.wall) {
     box('dark', 1.78, 1.14, 0.04, x - fx * 0.03, y - 0.57, z - fz * 0.03, ry);
-    addSign(scene, tp.tex, 1.7, 1.06, x, y, z, ry, 0.42);
-    addSign(scene, tp.head, 1.7, 0.2, x + fx * 0.005, y + 0.68, z + fz * 0.005, ry, 0.9);
+    addSign(scene, T.board.t, 1.7, 1.06, x, y, z, ry, 0.42);
+    addSign(scene, T.head.t, 1.7, 0.2, x + fx * 0.005, y + 0.68, z + fz * 0.005, ry, 0.9);
     return;
   }
   box('dark', 1.9, 0.07, 0.5, x, y, z, ry);
   for (const s of [-1, 1]) box('steel', 0.06, 2.34, 0.06, x + cx * 0.9 * s, y, z + sx * 0.9 * s);
   box('dark', 1.76, 1.3, 0.04, x, y + 0.92, z, ry);
-  addSign(scene, tp.tex, 1.7, 1.06, x + fx * 0.025, y + 1.5, z + fz * 0.025, ry, 0.42);
-  addSign(scene, tp.back, 1.7, 1.06, x - fx * 0.025, y + 1.5, z - fz * 0.025, ry + Math.PI, 0.35);
-  for (const s of [1, -1]) addSign(scene, tp.head, 1.76, 0.2, x + fx * 0.03 * s, y + 2.2, z + fz * 0.03 * s, ry + (s < 0 ? Math.PI : 0), 1.0);
-  const n = Math.ceil(0.9), cz = Math.floor(z), cxs = Math.floor(x);
-  if (Math.abs(fz) > 0.5) for (let k = Math.floor(x - 0.85); k <= Math.floor(x + 0.85); k++) setCell(k, cz, C.PROP);
-  else for (let k = Math.floor(z - 0.85); k <= Math.floor(z + 0.85); k++) setCell(cxs, k, C.PROP);
-  return n;
+  addSign(scene, T.board.t, 1.7, 1.06, x + fx * 0.025, y + 1.5, z + fz * 0.025, ry, 0.42);
+  addSign(scene, T.back.t, 1.7, 1.06, x - fx * 0.025, y + 1.5, z - fz * 0.025, ry + Math.PI, 0.35);
+  for (const s of [1, -1]) addSign(scene, T.head.t, 1.76, 0.2, x + fx * 0.03 * s, y + 2.2, z + fz * 0.03 * s, ry + (s < 0 ? Math.PI : 0), 1.0);
+  if (Math.abs(fz) > 0.5) for (let k = Math.floor(x - 0.85); k <= Math.floor(x + 0.85); k++) setCell(k, Math.floor(z), C.PROP);
+  else for (let k = Math.floor(z - 0.85); k <= Math.floor(z + 0.85); k++) setCell(Math.floor(x), k, C.PROP);
 }
 function buildLearnProps(scene) {
   // Accesso da Piazza Verdi: gradini verso la strada e luce diurna
@@ -1353,8 +1367,8 @@ function buildLearnProps(scene) {
   for (const x of [62, 78]) box('dark', 0.04, 1.5, 0.04, x, 3.92, 17.2);
   // Retro della galleria di arrivo
   const back = new THREE.Mesh(new THREE.PlaneGeometry(5, 3.8), new THREE.MeshBasicMaterial({ color:0x000000 })); back.position.set(30.05, 0.8, 22.5); back.rotation.y = Math.PI / 2; scene.add(back);
-  // Totem e pannelli delle dodici tappe
-  for (const tp of TAPPE) { prepareBoard(tp); buildTotem(scene, tp); }
+  // Totem e pannelli: dodici posizioni fisse, la grafica si dipinge quando si carica un modulo
+  for (const key of Object.keys(SLOTS)) buildTotem(scene, key);
   addSign(scene, SIGNS.text(['AULA DIDATTICA', 'Corso Gestione della Circolazione'], '#e8e8e8', '#15386e', 640, 160, 46), 1.5, 0.38, 7.5, 7.0, 14.98, Math.PI, 0.6);
 }
 function updateDisplay(minutes, arriving) {
@@ -1875,6 +1889,8 @@ function drawPortrait(kind) {
   c.font = `600 14px ${SANS}`; c.fillStyle = '#c9d2dd'; c.fillText(B.s, 84, 150); c.textAlign = 'left'; c.textBaseline = 'alphabetic';
 }
 /* Dialoghi: nodi { who, role, portrait, text, choices:[{ t, cond, act, next, hub, end }], quiz, explain, onAnswer } */
+/* I testi dei moduli possono usare solo <em>, <b>, <i>, <br>: tutto il resto viene mostrato come testo */
+const safeHtml = s => esc(s == null ? '' : s).replace(/&lt;(\/?)(em|b|i)&gt;/g, '<$1$2>').replace(/&lt;br\s*\/?&gt;/g, '<br>');
 const DLG = { nodes:null, i:0, shown:0, full:'', done:null, typing:false, choiceMade:false, visible:[], spk:'' };
 const W = (who, role, portrait) => ({ who, role, portrait });
 function line(w, text) { return { ...w, text }; }
@@ -1884,14 +1900,14 @@ function openDialog(nodes, onDone, npc) {
 function showNode() {
   const n = DLG.nodes[DLG.i]; drawPortrait(n.portrait || 'pass'); DLG.spk = n.portrait || '';
   $('dWho').textContent = n.who || ''; $('dRole').textContent = n.role || ''; $('dChoices').innerHTML = ''; $('dNext').textContent = '';
-  DLG.full = typeof n.text === 'function' ? n.text() : n.text; DLG.shown = 0; DLG.typing = true; DLG.choiceMade = false; $('dText').innerHTML = '';
-  Voice.say(DLG.full); if (n.choices && document.pointerLockElement) document.exitPointerLock();
+  DLG.full = safeHtml(typeof n.text === 'function' ? n.text() : n.text); DLG.shown = 0; DLG.typing = true; DLG.choiceMade = false; $('dText').innerHTML = '';
+  { const d = document.createElement('div'); d.innerHTML = DLG.full; Voice.say(d.textContent); } if (n.choices && document.pointerLockElement) document.exitPointerLock();
 }
 function typeDialog(dt) {
   if (!DLG.typing) return;
   const prev = Math.floor(DLG.shown); DLG.shown = Math.min(DLG.full.length, DLG.shown + dt * 80);
   if (Math.floor(DLG.shown) !== prev && Math.floor(DLG.shown) % 4 === 0) Sound.ui('blip');
-  $('dText').innerHTML = DLG.full.slice(0, Math.floor(DLG.shown)).replace(/<[^>]*$/, '');
+  $('dText').innerHTML = DLG.full.slice(0, Math.floor(DLG.shown)).replace(/<[^>]*$/, '').replace(/&[^;\s]*$/, '');
   if (DLG.shown >= DLG.full.length) finishTyping();
 }
 function finishTyping() {
@@ -1900,7 +1916,7 @@ function finishTyping() {
   if (n.choices) {
     DLG.visible = n.choices.filter(c => !c.cond || c.cond());
     DLG.visible.forEach((c, k) => { const b = document.createElement('button'); b.type = 'button'; if (c.done && c.done()) b.className = 'done';
-      b.innerHTML = `<b>${k + 1}</b><span>${c.t}</span>${c.tag ? `<i>${c.tag}</i>` : ''}`; b.addEventListener('click', () => choose(k)); $('dChoices').appendChild(b); });
+      b.innerHTML = `<b>${k + 1}</b><span>${safeHtml(c.t)}</span>${c.tag ? `<i>${esc(c.tag)}</i>` : ''}`; b.addEventListener('click', () => choose(k)); $('dChoices').appendChild(b); });
     $('dNext').textContent = isTouch ? 'Tocca una scelta' : 'Scegli con i tasti numerici o con il mouse';
   } else $('dNext').textContent = isTouch ? 'Tocca per continuare' : 'E · Spazio · clic per continuare';
 }
@@ -2000,15 +2016,18 @@ function arrow(x, a, b, c, d, col, wdt = 5) {
   const ang = Math.atan2(d - b, c - a); x.strokeStyle = col; x.fillStyle = col; x.lineWidth = wdt; x.beginPath(); x.moveTo(a, b); x.lineTo(c - Math.cos(ang) * 12, d - Math.sin(ang) * 12); x.stroke();
   x.beginPath(); x.moveTo(c, d); x.lineTo(c - Math.cos(ang - 0.45) * 20, d - Math.sin(ang - 0.45) * 20); x.lineTo(c - Math.cos(ang + 0.45) * 20, d - Math.sin(ang + 0.45) * 20); x.closePath(); x.fill();
 }
+const subIdx = tp => Math.max(0, MOD.subs.findIndex(s => s.codice === tp.sub));
+const accentOf = tp => subIdx(tp) % 2 ? PAL.navy : '#0e6a8a';
 function boardBase(x, tp) {
   x.fillStyle = PAL.paper; x.fillRect(0, 0, BW, BH);
   x.strokeStyle = 'rgba(21,56,110,.07)'; x.lineWidth = 1; for (let i = 0; i < BW; i += 32) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i, BH); x.stroke(); } for (let j = 0; j < BH; j += 32) { x.beginPath(); x.moveTo(0, j); x.lineTo(BW, j); x.stroke(); }
-  const acc = tp.sub === '1.1' ? '#0e6a8a' : PAL.navy; x.fillStyle = acc; x.fillRect(0, 0, BW, 92);
+  x.fillStyle = accentOf(tp); x.fillRect(0, 0, BW, 92);
   x.fillStyle = '#7cc8f0'; x.fillRect(0, 92, BW, 5);
-  x.fillStyle = '#bfe3f5'; x.font = fnt(600, 16, SANS); x.fillText(`TAPPA ${tp.n} · SOTTO-MODULO ${tp.sub}`, 30, 30);
-  x.fillStyle = '#fff'; x.font = fnt(800, 44, FONT); x.fillText(tp.title.toUpperCase(), 30, 76);
-  x.fillStyle = '#dfe6ee'; x.fillRect(0, BH - 30, BW, 30); x.fillStyle = PAL.sub; x.font = fnt(500, 14, SANS); x.fillText('SGS Learning · Modulo 1 · Conoscenza sulla normativa di riferimento', 30, BH - 10);
-  x.textAlign = 'right'; x.fillText(tp.sub === '1.1' ? 'Quadro normativo nazionale e ANSFISA' : 'Principi del SGS e mansioni', BW - 30, BH - 10); x.textAlign = 'left';
+  x.fillStyle = '#bfe3f5'; x.font = fnt(600, 16, SANS); x.fillText(`TAPPA ${tp.n}${tp.sub ? ' · SOTTO-MODULO ' + tp.sub : ''}`.toUpperCase(), 30, 30);
+  x.fillStyle = '#fff'; let ts = 44; x.font = fnt(800, ts, FONT); while (x.measureText(tp.title.toUpperCase()).width > BW - 60 && ts > 26) { ts -= 2; x.font = fnt(800, ts, FONT); } x.fillText(tp.title.toUpperCase(), 30, 76);
+  const sub = MOD.subs.find(s => s.codice === tp.sub);
+  x.fillStyle = '#dfe6ee'; x.fillRect(0, BH - 30, BW, 30); x.fillStyle = PAL.sub; x.font = fnt(500, 14, SANS); x.fillText(`SGS Learning · ${MOD.titolo} · ${MOD.nome}`.slice(0, 90), 30, BH - 10);
+  if (sub) { x.textAlign = 'right'; x.fillText(sub.titolo.slice(0, 60), BW - 30, BH - 10); x.textAlign = 'left'; }
 }
 function footerNote(x, text, col = PAL.navy, y = 520, h = 72) {
   x.fillStyle = '#ffffff'; rr(x, 30, y, BW - 60, h, 10); x.fill(); x.lineWidth = 3; x.strokeStyle = col; x.stroke();
@@ -2188,195 +2207,258 @@ function drawB12(x, tp) {
   x.fillStyle = PAL.sub; x.font = fnt(500, 13); x.textAlign = 'center'; x.fillText('Cornice: RSGS · Regole: DE', cx, 500); x.fillText('Infrastruttura: Resp. Infrastruttura · Veicolo: SRM', cx, 518); x.textAlign = 'left';
   x.fillStyle = PAL.ink; x.font = fnt(700, 17); x.textAlign = 'center'; x.fillText('Tutto il sistema esiste perché chi guida, chi viaggia e chi lavora in linea sia protetto.', BW / 2, 578); x.textAlign = 'left';
 }
-/* Retro dei totem e fascia superiore */
-function boardBack(tp) {
-  return signTex(1024, 640, (x, w, h) => {
-    const g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#15386e'); g.addColorStop(1, '#0b1a33'); x.fillStyle = g; x.fillRect(0, 0, w, h);
-    x.fillStyle = '#7cc8f0'; x.font = fnt(800, 230, FONT); x.fillText(String(tp.n).padStart(2, '0'), 60, 300);
-    x.fillStyle = '#fff'; x.font = fnt(800, 58, FONT); wrapT(x, tp.title.toUpperCase(), 64, 400, 880, 62);
-    x.fillStyle = '#bfe3f5'; x.font = fnt(500, 28); x.fillText('SGS Learning · Modulo 1 · il pannello è sull\'altro lato', 64, 580);
-  });
+/* Testo a capo con troncamento se supera lo spazio disponibile */
+function wrapClip(x, text, a, b, maxW, lh, maxY) {
+  const words = String(text).split(' '); let ln = '', y = b;
+  for (let i = 0; i < words.length; i++) {
+    const t = ln ? ln + ' ' + words[i] : words[i];
+    if (x.measureText(t).width > maxW && ln) { if (y + lh > maxY) { x.fillText(ln.replace(/\s*\S*$/, '') + '…', a, y); return y + lh; } x.fillText(ln, a, y); ln = words[i]; y += lh; } else ln = t;
+  }
+  if (ln) x.fillText(ln, a, y); return y + lh;
 }
-function boardHead(tp) {
-  return signTex(1024, 120, (x, w, h) => { x.fillStyle = tp.sub === '1.1' ? '#0e6a8a' : '#15386e'; x.fillRect(0, 0, w, h); x.fillStyle = '#7cc8f0'; x.fillRect(0, h - 10, w, 10);
-    x.fillStyle = '#fff'; x.font = fnt(800, 62, FONT); x.textBaseline = 'middle'; x.fillText(`${tp.n}  ·  ${tp.title.toUpperCase()}`, 30, h / 2 - 2); });
+function box2(x, a, b, w, h, col, title, text, o = {}) {
+  const band = o.band || 42, ts = o.ts || 22, ss = o.ss || 17;
+  x.fillStyle = '#ffffff'; rr(x, a, b, w, h, 10); x.fill(); x.lineWidth = 3; x.strokeStyle = col; x.stroke();
+  if (title) { x.fillStyle = col; rr(x, a, b, w, band, 10); x.fill(); x.fillRect(a, b + band - 10, w, 10); x.fillStyle = '#fff'; let f = ts; x.font = fnt(700, f, FONT); while (x.measureText(title).width > w - 24 && f > 14) { f -= 1; x.font = fnt(700, f, FONT); } x.textBaseline = 'middle'; x.fillText(title, a + 12, b + band / 2 + 1); x.textBaseline = 'alphabetic'; }
+  x.fillStyle = PAL.ink; x.font = fnt(500, ss); wrapClip(x, text, a + 12, b + (title ? band : 0) + ss + 10, w - 24, ss * 1.3, b + h - 8);
 }
-function prepareBoard(tp) {
-  const c = mkCanvas(BW, BH), x = c.getContext('2d'); tp.draw(x, tp); tp.canvas = c;
-  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; tp.tex = t; tp.back = boardBack(tp); tp.head = boardHead(tp);
+const TCOL = [PAL.blue, PAL.teal, PAL.green, PAL.orange, PAL.navy, PAL.grey];
+/* Il corpo più grande (tra max e min) con cui tutti i testi entrano nello spazio disponibile */
+function bestSize(x, texts, w, h, wt = 500, max = 26, min = 15) {
+  for (let s = max; s > min; s--) {
+    x.font = fnt(wt, s); let ok = true;
+    for (const t of texts) { let lines = 1, ln = ''; for (const wd of String(t).split(' ')) { const tt = ln ? ln + ' ' + wd : wd; if (x.measureText(tt).width > w && ln) { lines++; ln = wd; } else ln = tt; } if (lines * s * 1.3 > h) { ok = false; break; } }
+    if (ok) return s;
+  }
+  return min;
+}
+function fitLine(x, t, wt, max, min, w, fam = FONT) { let s = max; x.font = fnt(wt, s, fam); while (x.measureText(t).width > w && s > min) { s--; x.font = fnt(wt, s, fam); } }
+/* Modelli grafici generici: si costruiscono dal foglio Pannelli */
+function drawTemplate(x, tp) {
+  boardBase(x, tp);
+  const E = tp.elementi.slice(0, 6), n = E.length, note = tp.notaPannello, top = 116, bottom = note ? 492 : 588, acc = accentOf(tp);
+  const foot = () => { if (note) footerNote(x, note, acc, 506, 80); };
+  switch (tp.modello) {
+    case 'sequenza': case 'colonne': {
+      const gap = tp.modello === 'sequenza' ? 34 : 20, w = (BW - 60 - gap * (n - 1)) / n;
+      const ss = bestSize(x, E.map(e => e.testo), w - 24, bottom - top - 48 - 24, 500, 26, 15);
+      E.forEach((e, i) => { const a = 30 + i * (w + gap); box2(x, a, top, w, bottom - top, TCOL[i % 6], e.titolo, e.testo, { ss, ts:w > 220 ? 24 : 20, band:48 }); if (tp.modello === 'sequenza' && i < n - 1) arrow(x, a + w + 3, (top + bottom) / 2, a + w + gap - 3, (top + bottom) / 2, acc, 5); });
+      foot(); break;
+    }
+    case 'elenco': {
+      const cols = n <= 4 ? 2 : 3, rows = Math.ceil(n / cols), gw = 20, w = (BW - 60 - gw * (cols - 1)) / cols, h = (bottom - top - gw * (rows - 1)) / rows;
+      const ss = bestSize(x, E.map(e => e.testo), w - 24, h - 42 - 20, 500, 26, 15);
+      E.forEach((e, i) => box2(x, 30 + (i % cols) * (w + gw), top + Math.floor(i / cols) * (h + gw), w, h, TCOL[i % 6], e.titolo, e.testo, { ss })); foot(); break;
+    }
+    case 'confronto': {
+      const H = E[0] || {}, R = E.slice(1, 6), rh = Math.min(84, (bottom - top - 60) / Math.max(1, R.length) - 8);
+      x.fillStyle = PAL.grey; rr(x, 210, top, 380, 50, 8); x.fill(); x.fillStyle = PAL.green; rr(x, 604, top, 390, 50, 8); x.fill();
+      x.fillStyle = '#fff'; fitLine(x, (H.testo || '').toUpperCase(), 700, 21, 13, 356); x.fillText((H.testo || '').toUpperCase(), 224, top + 32); fitLine(x, (H.testo2 || '').toUpperCase(), 700, 21, 13, 366); x.fillText((H.testo2 || '').toUpperCase(), 618, top + 32);
+      R.forEach((r, i) => { const y = top + 62 + i * (rh + 8); x.fillStyle = PAL.ink; x.font = fnt(700, 20, FONT); wrapClip(x, r.titolo.toUpperCase(), 30, y + 30, 170, 22, y + rh);
+        x.fillStyle = '#e8ebef'; rr(x, 210, y, 380, rh, 8); x.fill(); x.fillStyle = '#e3f3ea'; rr(x, 604, y, 390, rh, 8); x.fill();
+        const rs = bestSize(x, [r.testo, r.testo2], 356, rh - 16, 500, 20, 14); x.fillStyle = PAL.ink; x.font = fnt(500, rs); wrapClip(x, r.testo, 224, y + rs + 8, 356, rs * 1.3, y + rh - 4); wrapClip(x, r.testo2, 618, y + rs + 8, 366, rs * 1.3, y + rh - 4); });
+      foot(); break;
+    }
+    case 'ciclo': {
+      const cx = 280, cy = 350, R0 = 200, R1 = 118, k = Math.max(3, n);
+      E.forEach((e, i) => { const a0 = -Math.PI / 2 + i * 2 * Math.PI / k + 0.04, a1 = a0 + 2 * Math.PI / k - 0.08, c = TCOL[i % 6];
+        x.fillStyle = c; x.beginPath(); x.arc(cx, cy, R0, a0, a1); x.arc(cx, cy, R1, a1, a0, true); x.closePath(); x.fill();
+        const am = (a0 + a1) / 2; x.fillStyle = '#fff'; x.textAlign = 'center'; x.font = fnt(800, n > 4 ? 18 : 24, FONT); x.fillText(e.titolo.toUpperCase().slice(0, 14), cx + Math.cos(am) * (R0 + R1) / 2, cy + Math.sin(am) * (R0 + R1) / 2 + 7); x.textAlign = 'left';
+        const h = Math.min(100, (476 - 16 * (n - 1)) / n), y = 116 + i * (h + 16); x.fillStyle = c; rr(x, 540, y, 454, h, 10); x.fill(); x.fillStyle = '#fff'; x.font = fnt(800, 21, FONT); x.fillText(e.titolo.toUpperCase().slice(0, 30), 556, y + 28); x.font = fnt(500, 16); wrapClip(x, e.testo, 556, y + 52, 424, 20, y + h - 4); });
+      if (note) { x.fillStyle = PAL.ink; x.textAlign = 'center'; x.font = fnt(700, 19, FONT); const L = []; let ln = ''; for (const w of note.split(' ')) { const t = ln ? ln + ' ' + w : w; if (x.measureText(t).width > 190 && ln) { L.push(ln); ln = w; } else ln = t; } L.push(ln);
+        L.slice(0, 5).forEach((l, i) => x.fillText(l, cx, cy - (Math.min(5, L.length) - 1) * 11 + i * 22 + 6)); x.textAlign = 'left'; }
+      break;
+    }
+    case 'anelli': {
+      const cx = 300, cy = 300, k = Math.max(2, n), step = 190 / k;
+      E.forEach((e, i) => { const r = 196 - i * step, c = TCOL[i % 6]; x.fillStyle = i === n - 1 ? PAL.ink : ['#d9efe2', '#d8e7f6', '#fbe3cc', '#fff3e6', '#e9e4f7', '#eef1f5'][i % 6]; x.beginPath(); x.arc(cx, cy, r, 0, 7); x.fill(); x.lineWidth = 3; x.strokeStyle = c; x.stroke();
+        x.fillStyle = i === n - 1 ? '#fff' : PAL.ink; x.textAlign = 'center'; x.font = fnt(700, 15, FONT); x.fillText(e.titolo.toUpperCase().slice(0, 26), cx, i === n - 1 ? cy + 6 : cy - r + 20); x.textAlign = 'left';
+        const y = 118 + i * 62; x.fillStyle = c; x.fillRect(560, y, 8, 50); x.fillStyle = PAL.ink; x.font = fnt(700, 19, FONT); x.fillText(e.titolo, 580, y + 20); x.font = fnt(500, 16); wrapClip(x, e.testo, 580, y + 42, 410, 18, y + 58); });
+      foot(); break;
+    }
+    case 'scheda': default: {
+      const first = E[0] || { titolo:'', testo:'' }, last = n > 2 ? E[n - 1] : null, mid = E.slice(1, last ? n - 1 : n).slice(0, 3);
+      x.fillStyle = '#fff'; rr(x, 30, 116, BW - 60, 100, 10); x.fill(); x.lineWidth = 3; x.strokeStyle = acc; x.stroke(); x.fillStyle = acc; x.font = fnt(800, 18, FONT); x.fillText((first.titolo || '').toUpperCase(), 48, 142);
+      x.fillStyle = PAL.ink; x.font = fnt(500, 19); wrapClip(x, first.testo, 48, 172, BW - 100, 24, 212);
+      const w = (BW - 60 - 16 * (mid.length - 1)) / Math.max(1, mid.length);
+      const ms = bestSize(x, mid.map(m => m.testo || m.titolo), w - 66, 110, 600, 24, 15);
+      mid.forEach((m, i) => { const a = 30 + i * (w + 16); x.fillStyle = '#fff'; rr(x, a, 232, w, 150, 10); x.fill(); x.lineWidth = 2.5; x.strokeStyle = acc; x.stroke(); check(x, a + 16, 262, acc); x.fillStyle = PAL.ink; x.font = fnt(600, ms); wrapClip(x, m.testo || m.titolo, a + 52, 262 + ms * 0.4, w - 66, ms * 1.3, 376); });
+      if (last) { const ls = bestSize(x, [last.testo], BW - 100, 130, 600, 28, 16); x.fillStyle = acc; rr(x, 30, 400, BW - 60, 176, 10); x.fill(); x.fillStyle = '#fff'; x.font = fnt(800, 18, FONT); x.fillText((last.titolo || '').toUpperCase(), 48, 430); x.font = fnt(600, ls); wrapClip(x, last.testo, 48, 462 + ls * 0.3, BW - 100, ls * 1.3, 570); }
+    }
+  }
+}
+const DEDICATED = { 'M1-01':drawB1, 'M1-02':drawB2, 'M1-03':drawB3, 'M1-04':drawB4, 'M1-05':drawB5, 'M1-06':drawB6, 'M1-07':drawB7, 'M1-08':drawB8, 'M1-09':drawB9, 'M1-10':drawB10, 'M1-11':drawB11, 'M1-12':drawB12 };
+function drawBoard(x, tp) { const d = tp.grafica === 'dedicata' && DEDICATED[tp.dedicata]; if (d) d(x, tp); else drawTemplate(x, tp); }
+/* Superfici dei totem: una tela per pannello, retro e fascia, ridipinte a ogni cambio di modulo */
+const SLOT_TEX = {};
+function slotTex(slot) {
+  if (SLOT_TEX[slot]) return SLOT_TEX[slot];
+  const mk = (w, h) => { const c = mkCanvas(w, h), t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return { c, t }; };
+  return (SLOT_TEX[slot] = { board:mk(BW, BH), back:mk(1024, 640), head:mk(1024, 120) });
+}
+function paintSlot(slot, tp) {
+  const S = slotTex(slot), bx = S.board.c.getContext('2d'), kx = S.back.c.getContext('2d'), hx = S.head.c.getContext('2d');
+  if (tp) { drawBoard(bx, tp); tp.canvas = S.board.c; }
+  else { bx.fillStyle = '#1b2530'; bx.fillRect(0, 0, BW, BH); bx.fillStyle = '#5f6a7a'; bx.font = fnt(700, 40, FONT); bx.fillText('SGS LEARNING', 60, 300); bx.font = fnt(500, 24); bx.fillText('Spazio disponibile per un\'altra tappa', 60, 350); }
+  const g = kx.createLinearGradient(0, 0, 0, 640); g.addColorStop(0, '#15386e'); g.addColorStop(1, '#0b1a33'); kx.fillStyle = g; kx.fillRect(0, 0, 1024, 640);
+  if (tp) { kx.fillStyle = '#7cc8f0'; kx.font = fnt(800, 230, FONT); kx.fillText(String(tp.n).padStart(2, '0'), 60, 300); kx.fillStyle = '#fff'; kx.font = fnt(800, 58, FONT); wrapClip(kx, tp.title.toUpperCase(), 64, 400, 880, 62, 540);
+    kx.fillStyle = '#bfe3f5'; kx.font = fnt(500, 28); kx.fillText(`SGS Learning · ${MOD.titolo} · il pannello è sull'altro lato`.slice(0, 64), 64, 590); }
+  hx.fillStyle = tp ? accentOf(tp) : '#2a3440'; hx.fillRect(0, 0, 1024, 120); hx.fillStyle = '#7cc8f0'; hx.fillRect(0, 110, 1024, 10);
+  hx.fillStyle = '#fff'; let hs = 62; const ht = tp ? `${tp.n}  ·  ${tp.title.toUpperCase()}` : 'SGS LEARNING'; hx.font = fnt(800, hs, FONT); while (hx.measureText(ht).width > 980 && hs > 30) { hs -= 2; hx.font = fnt(800, hs, FONT); }
+  hx.textBaseline = 'middle'; hx.fillText(ht, 30, 58); hx.textBaseline = 'alphabetic';
+  S.board.t.needsUpdate = S.back.t.needsUpdate = S.head.t.needsUpdate = true;
 }
 
 /* =========================================================================
-   CONTENUTI: dodici tappe (slide del Modulo 1), laboratori, quiz, banca d'esame
+   PACCHETTO CONTENUTI: posizioni fisse del motore, compilazione e validazione dei moduli
    ========================================================================= */
-const TAPPE = [
-  { n:1, sub:'1.1', id:'mappa', title:'La mappa della sicurezza', host:'istr', where:'Atrio · totem 1', draw:drawB1, board:{ pos:[5.6, 4.5, 11.3], ry:Math.PI },
-    points:['Il DPR 753/1980 è la norma storica su polizia, sicurezza e regolarità dell\'esercizio: impostazione prescrittiva e frammentata.', 'Il D.L. 109/2018, il «Decreto Genova», istituisce ANSFISA.',
-      'L\'Esercente opera solo con un\'Autorizzazione di Sicurezza (AdS). Il requisito chiave è un SGS attuato, monitorato e migliorato nel tempo.'],
-    crit:'La slide parla di SGS «certificato». Più precisamente il SGS non riceve una certificazione di terza parte: è ANSFISA a valutarne la conformità e l\'attuazione quando rilascia e mantiene l\'AdS. Inoltre il DPR 753/1980 non è abrogato: resta in vigore per le parti non superate dalle norme successive. Il quadro vigente comprende anche atti successivi e provvedimenti ANSFISA: l\'elenco aggiornato lo tiene l\'RSGS.',
-    intro:['Per decenni il riferimento è stato il DPR 753 del 1980: regole prescrittive, sparse in tante norme. Dopo il crollo del ponte Morandi, il D.L. 109/2018, il «Decreto Genova», ha istituito <em>ANSFISA</em>.',
-      'Oggi un esercente come AMT può esercitare solo con un\'<em>Autorizzazione di Sicurezza</em>, e al centro dell\'autorizzazione c\'è il suo <em>Sistema di Gestione della Sicurezza</em>. Non basta scriverlo: va attuato e migliorato.'],
-    labs:[{ type:'order', title:'Metti in ordine l\'evoluzione', instr:'Tocca le carte nell\'ordine cronologico e logico, dalla più antica all\'attuale.',
-      items:['DPR 753/1980: norme prescrittive e frammentate', 'D.L. 109/2018 «Decreto Genova»: nasce ANSFISA', 'ANSFISA rilascia l\'Autorizzazione di Sicurezza all\'Esercente', 'L\'Esercente mantiene l\'AdS attuando e migliorando il SGS'] }],
-    quiz:[['Quale atto ha istituito ANSFISA?', ['Il D.L. 109/2018, il «Decreto Genova»', 'Il DPR 753/1980', 'Un regolamento interno aziendale'], 'Il D.L. 109/2018 ha istituito l\'Agenzia. Il DPR 753/1980 è la norma storica su polizia, sicurezza e regolarità dell\'esercizio.'],
-      ['Che cosa serve all\'Esercente per operare nel nuovo quadro?', ['Un\'Autorizzazione di Sicurezza fondata su un SGS attuato ed efficace', 'Solo il rispetto del DPR 753/1980', 'Una certificazione di qualità ISO 9001'], 'Senza AdS non si esercisce. Il SGS non basta averlo scritto: va attuato, monitorato e migliorato. Una certificazione di qualità non lo sostituisce.']] },
-  { n:2, sub:'1.1', id:'ansfisa', title:'I compiti di ANSFISA', host:'istr', where:'Atrio · totem 2', draw:drawB2, board:{ pos:[9.6, 4.5, 11.3], ry:Math.PI },
-    points:['Certificazione e autorizzazione: rilascia certificazioni e autorizzazioni all\'esercizio di impianti e sistemi di trasporto.', 'Supervisione: verifica che gli Esercenti rispettino le norme e siano coerenti con gli obiettivi di sicurezza prefissati.', 'Regolamentazione: emana disposizioni a carattere normativo (circolari, note, decreti).'],
-    crit:'Attenzione a non confondere i piani: ANSFISA supervisiona dall\'esterno, ma il monitoraggio continuo e gli audit interni sono compiti dell\'Esercente, svolti attraverso il suo SGS.',
-    intro:['ANSFISA fa tre mestieri: <em>autorizza</em>, <em>sorveglia</em> e <em>regola</em>. Rilascia autorizzazioni, verifica sul campo che gli esercenti rispettino le norme ed emana circolari, note e decreti.',
-      'Per noi significa una cosa sola: dobbiamo poter dimostrare, con evidenze, che il sistema funziona. Anche quando nessuno ci controlla.'],
-    labs:[{ type:'match', title:'Chi fa cosa, per ANSFISA', instr:'Associa ogni attività al compito dell\'Agenzia.', options:['Certificazione e autorizzazione', 'Supervisione', 'Regolamentazione'],
-      rows:[['Rilascio dell\'Autorizzazione di Sicurezza all\'Esercente', 0], ['Verifica presso l\'Esercente del rispetto delle norme', 1], ['Emanazione di una circolare con nuove disposizioni', 2], ['Controllo di coerenza con gli obiettivi di sicurezza prefissati', 1], ['Autorizzazione all\'esercizio di un nuovo impianto', 0], ['Nota con indicazioni applicative per gli Esercenti', 2]] }],
-    quiz:[['Una circolare ANSFISA con nuove disposizioni rientra nella…', ['Regolamentazione', 'Supervisione', 'Certificazione'], 'Circolari, note e decreti sono disposizioni a carattere normativo: è la funzione di regolamentazione.'],
-      ['Chi svolge il controllo interno quotidiano sul funzionamento del SGS?', ['L\'Esercente, con monitoraggio e audit interni', 'ANSFISA, presente in ogni stazione', 'Nessuno: basta avere l\'AdS'], 'ANSFISA supervisiona dall\'esterno; il monitoraggio continuo e gli audit interni restano all\'Esercente.']] },
-  { n:3, sub:'1.2', id:'sgs', title:'Che cos\'è il SGS', host:'istr', where:'Atrio · totem 3', draw:drawB3, board:{ pos:[13.6, 4.5, 11.3], ry:Math.PI },
-    points:['Organizzazione: struttura chiara, ruoli definiti, responsabilità assegnate.', 'Procedure: regole operative standardizzate per l\'esercizio e la manutenzione.', 'Risorse: personale formato, mezzi sicuri, infrastrutture adeguate.', 'Ambito indicato dal corso: sistemi a guida vincolata (metropolitana, cremagliera Principe–Granarolo, linea filoviaria).'],
-    crit:'Per la linea filoviaria l\'inclusione nel perimetro del SGS è ancora in corso di definizione: verifica il perimetro vigente con l\'RSGS prima di darla per acquisita. La Ferrovia Genova–Casella non rientra nel perimetro SGS TGV trattato nel corso.',
-    intro:['Il SGS è un ingranaggio a tre ruote: <em>organizzazione</em>, cioè chi fa cosa e con quali responsabilità; <em>procedure</em>, cioè come si fa; <em>risorse</em>, cioè persone formate, mezzi e infrastrutture adeguati.',
-      'Se una ruota si ferma, si ferma tutto: una procedura perfetta con personale non formato non protegge nessuno.'],
-    labs:[{ type:'match', title:'Organizzazione, procedure o risorse?', instr:'Associa ogni elemento a una delle tre ruote del SGS.', options:['Organizzazione', 'Procedure', 'Risorse'],
-      rows:[['Organigramma con ruoli e deleghe', 0], ['Istruzione operativa per la messa in servizio dei treni', 1], ['Personale formato e abilitato', 2], ['Veicoli manutenuti e sicuri', 2], ['Responsabilità assegnate per iscritto', 0], ['Piano di manutenzione con cadenze e controlli', 1]] }],
-    quiz:[['Su quali tre elementi si regge il SGS?', ['Organizzazione, procedure, risorse', 'Norme, sanzioni, controlli', 'Treni, stazioni, gallerie'], 'Sono le tre ruote della slide: struttura e responsabilità, regole operative, persone e mezzi adeguati.'],
-      ['Secondo il corso, a quali sistemi si applica la mappa organizzativa del SGS?', ['Ai sistemi a guida vincolata: metropolitana, cremagliera Principe–Granarolo, filovia', 'Solo agli autobus urbani', 'A tutti i servizi aziendali, autobus compresi'], 'È l\'ambito indicato dalle slide. Per la filovia ricorda la nota: il perimetro è in corso di definizione.']] },
-  { n:4, sub:'1.2', id:'proattivo', title:'Reattivo o proattivo', host:'tsgs', where:'Atrio · totem 4', draw:drawB4, board:{ pos:[14.4, 4.5, 16.8], ry:Math.PI / 2 },
-    points:['Reattivo: si risolve dopo il guasto, si applicano le regole senza chiedersi perché, si cerca il colpevole, si interviene a guasto.', 'Proattivo (risk-based): si valutano i rischi prima dell\'evento, si analizza di continuo il sistema, si capisce perché ha fallito, la manutenzione è preventiva e monitorata.'],
-    crit:'«Proattivo» non significa che le regole diventano facoltative: significa conoscere i rischi che ogni regola controlla, verificarne l\'efficacia e migliorarla.',
-    intro:['Il vecchio modo di lavorare era <em>reattivo</em>: si rompe, si ripara, si cerca il colpevole. Il SGS ci chiede di essere <em>proattivi</em>: guardare i dati, valutare i rischi prima che l\'evento accada, capire perché il sistema ha lasciato passare l\'errore.'],
-    labs:[{ type:'match', title:'Da che parte sta?', instr:'Per ogni frase scegli l\'approccio.', options:['Reattivo', 'Proattivo'],
-      rows:[['«Risolviamo il problema dopo che si è rotto»', 0], ['«Valutiamo i rischi prima che accada l\'evento»', 1], ['Applicazione cieca delle regole', 0], ['Analisi continua del sistema e dei pericoli', 1], ['Cerchiamo il colpevole', 0], ['Capiamo perché il sistema ha fallito', 1], ['Interveniamo solo a guasto', 0], ['Manutenzione preventiva e monitorata', 1]] }],
-    quiz:[['Porte di un treno con guasti ricorrenti: qual è la risposta proattiva?', ['Analizzo i dati dei guasti e intervengo prima del prossimo', 'Aspetto il prossimo guasto e riparo', 'Cerco chi ha chiuso male la porta'], 'Proattivo vuol dire usare i dati per prevenire, non attendere il prossimo evento né cercare un colpevole.'],
-      ['Nel modello proattivo, le regole…', ['si applicano sapendo quali rischi controllano, e si migliorano', 'si applicano senza chiedersi il perché', 'diventano facoltative'], 'Le regole restano obbligatorie: cambia il modo di gestirle, collegato ai rischi e verificato nel tempo.']] },
-  { n:5, sub:'1.2', id:'pdca', title:'Il ciclo PDCA', host:'tsgs', where:'Atrio · totem 5', draw:drawB5, board:{ pos:[14.4, 4.5, 20.9], ry:Math.PI / 2 },
-    points:['Plan: valutazione dei rischi, analisi preventiva degli scenari.', 'Do: attuazione delle misure, applicazione delle procedure operative.', 'Check: monitoraggio e audit, controllo dell\'efficacia sul campo.', 'Act: miglioramento, correzione delle anomalie e aggiornamento del SGS. Poi il ciclo ricomincia.'],
-    crit:null,
-    intro:['Il SGS vive in un ciclo che non si chiude mai: <em>Plan</em>, valuto i rischi; <em>Do</em>, applico le misure; <em>Check</em>, verifico sul campo con monitoraggio e audit; <em>Act</em>, correggo e aggiorno. E si riparte.'],
-    labs:[{ type:'order', title:'Ricostruisci il ciclo', instr:'Metti le fasi in sequenza, partendo dalla pianificazione.', items:['Plan · valutazione dei rischi', 'Do · attuazione delle misure e delle procedure', 'Check · monitoraggio e audit sul campo', 'Act · correzione e aggiornamento del SGS'] },
-      { type:'match', title:'In quale fase?', instr:'Associa ogni attività alla sua fase.', options:['Plan', 'Do', 'Check', 'Act'],
-        rows:[['Analisi preventiva degli scenari di pericolo', 0], ['Applicazione delle procedure operative', 1], ['Audit sul campo', 2], ['Correzione di un\'anomalia e revisione della procedura', 3], ['Monitoraggio degli indicatori di sicurezza', 2]] }],
-    quiz:[['Un audit sul campo rientra nella fase…', ['Check', 'Plan', 'Act'], 'Monitoraggio e audit verificano l\'efficacia sul campo: è la fase di verifica.'],
-      ['Dopo la fase Act, il ciclo…', ['ricomincia: la sicurezza non si ferma mai', 'si chiude definitivamente', 'passa ad ANSFISA'], 'È un ciclo di miglioramento continuo: ogni correzione diventa l\'ingresso della pianificazione successiva.']] },
-  { n:6, sub:'1.2', id:'organizzazione', title:'Organizzazione e pilastri', host:'de', where:'Aula · parete', draw:drawB6, board:{ pos:[3.9, 6.25, 16.03], ry:0, wall:true },
-    points:['Nell\'organigramma per funzioni del Servizio su Ferro (FER), SGS (SGA) e SGC (SGM) sono funzioni collegate direttamente al Servizio.', 'Metro (MET): esercizio (DCT), manutenzione infrastrutture (MMI), segnalamento e impianti ausiliari (MMC), veicoli e officina (MMV).',
-      'Quattro pilastri dell\'Esercente: DE (operatività e circolazione), RSGS (garanzia e controllo), Manutenzione (SRM e Resp. Infrastruttura), RSGC (competenze).', 'Responsabilità indipendenti e separate, per garantire il controllo reciproco. La responsabilità ultima resta dell\'Esercente.'],
-    crit:'Il pannello riporta solo sigle e funzioni: gli organigrammi delle slide contengono nominativi, che non servono per l\'apprendimento e cambiano nel tempo. Fai sempre riferimento all\'organigramma vigente.',
-    intro:['Le slide mostrano due organigrammi. Quello per funzioni del <em>Servizio su Ferro</em> è il più utile per voi: la Metro con esercizio e manutenzioni, e accanto il Sistema di Gestione della Sicurezza e quello delle Competenze.',
-      'Poi ci sono i <em>quattro pilastri</em>: io, Direttore di Esercizio; l\'RSGS; la manutenzione con SRM e responsabili dell\'infrastruttura; il Responsabile SGC. Collaboriamo, ma nessuno controlla se stesso.'],
-    labs:[{ type:'match', title:'Sigle del Servizio su Ferro', instr:'Associa ogni sigla alla sua funzione.', options:['Sistema di Gestione della Sicurezza', 'Sistema di Gestione delle Competenze', 'Esercizio e Manutenzione Metro', 'Manut. Veicoli e Officina', 'Manut. Segnalamento e Imp. Ausiliari', 'Manut. Infrastrutture'],
-      rows:[['SGA', 0], ['SGM', 1], ['MET', 2], ['MMV', 3], ['MMC', 4], ['MMI', 5]] },
-      { type:'match', title:'I quattro pilastri', instr:'Associa ogni ambito di responsabilità al suo pilastro.', options:['DE', 'RSGS', 'SRM e Resp. Infrastruttura', 'RSGC'],
-        rows:[['Operatività e circolazione', 0], ['Garanzia e controllo della sicurezza', 1], ['Sicurezza di veicoli e impianti', 2], ['Acquisizione e mantenimento delle competenze', 3]] }],
-    quiz:[['Perché i quattro ruoli hanno responsabilità separate?', ['Per garantire il controllo reciproco', 'Per ridurre il numero di riunioni', 'Perché lavorano per aziende diverse'], 'Chi governa la produzione non deve essere anche chi la controlla: la separazione rende il controllo credibile.'],
-      ['Chi ha la responsabilità ultima del sistema?', ['L\'Esercente', 'ANSFISA', 'Il singolo conducente'], 'Le funzioni si dividono i compiti, ma la responsabilità ultima del sistema resta all\'Esercente.']] },
-  { n:7, sub:'1.2', id:'de', title:'Il Direttore di Esercizio', host:'de', where:'Aula · parete', draw:drawB7, board:{ pos:[10.0, 6.25, 16.03], ry:0, wall:true },
-    points:['Il capo operativo: responsabile della sicurezza e della regolarità dell\'esercizio.', 'Autorizza la circolazione e le operazioni; garantisce la conformità alle disposizioni ANSFISA; emette le certificazioni annuali di manutenzione (come da slide).', 'Per il conducente è la massima autorità sulla linea. Ruolo incompatibile con quello di RSGS.'],
-    crit:'La slide scrive che l\'incompatibilità DE/RSGS è «per legge»: nel materiale ufficiale va citata la fonte puntuale (disposizioni ANSFISA e atti di nomina). Anche la «certificazione annuale di manutenzione» va ricondotta alla procedura aziendale che la disciplina.',
-    intro:['Io rispondo della <em>sicurezza e regolarità dell\'esercizio</em>: autorizzo la circolazione e le operazioni e garantisco che l\'esercizio sia conforme alle disposizioni ANSFISA.',
-      'Una cosa che dovete ricordare: il mio ruolo è <em>incompatibile</em> con quello di RSGS. Chi decide come si esercisce non può essere anche chi ne controlla la sicurezza.'],
-    labs:[{ type:'multi', title:'Le responsabilità del DE', instr:'Seleziona tutte e sole le responsabilità attribuite al DE nel corso.',
-      items:[['Autorizza la circolazione e le operazioni', true], ['Garantisce la conformità alle disposizioni ANSFISA', true], ['Emette le certificazioni annuali di manutenzione', true], ['Conduce gli audit interni del SGS', false, 'È un compito dell\'RSGS.'], ['Nomina le commissioni d\'esame', false, 'È un compito del Responsabile SGC.'], ['Esegue le riparazioni in officina', false, 'È la funzione di esecuzione dell\'SRM.']] }],
-    quiz:[['Il DE può ricoprire anche il ruolo di RSGS?', ['No, i due ruoli sono incompatibili', 'Sì, se l\'azienda è piccola', 'Sì, con una delega scritta'], 'Il controllo della sicurezza deve essere indipendente da chi governa la produzione.'],
-      ['Per il conducente, il DE è…', ['la massima autorità sulla linea', 'un consulente esterno', 'il responsabile delle abilitazioni'], 'È il capo operativo dell\'esercizio. Le abilitazioni sono gestite dal Sistema di Gestione delle Competenze.']] },
-  { n:8, sub:'1.2', id:'rsgs', title:'Il Responsabile del SGS', host:'rsgs', where:'Banchina · totem 8', draw:drawB8, board:{ pos:[50, 0, 9.7], ry:0 },
-    points:['L\'architetto e il controllore: assicura che i processi di sicurezza siano predisposti, attuati e tenuti aggiornati.', 'Indipendente dalle pressioni della produzione e della circolazione.', 'Gestisce la valutazione dei rischi, monitora le prestazioni e conduce gli audit.', 'Raccoglie i dati su inconvenienti e near miss per migliorare il sistema, non per punire.'],
-    crit:null,
-    intro:['Il mio lavoro è progettare e controllare: che i processi di sicurezza esistano, siano applicati e restino aggiornati. Per farlo devo essere <em>indipendente</em> da orari, produzione e circolazione.',
-      'Da voi mi servono soprattutto le <em>segnalazioni</em>, anche dei quasi-incidenti. Non servono a punire: servono a vedere i rischi prima che diventino incidenti.'],
-    labs:[{ type:'multi', title:'Che cosa fa l\'RSGS?', instr:'Seleziona tutte e sole le responsabilità dell\'RSGS.',
-      items:[['È indipendente dalle pressioni della produzione', true], ['Gestisce la valutazione dei rischi', true], ['Monitora le prestazioni e conduce gli audit', true], ['Raccoglie i near miss per migliorare, non per punire', true], ['Autorizza la partenza dei treni', false, 'L\'autorizzazione della circolazione è del DE.'], ['Esegue la manutenzione dei veicoli', false, 'È compito dell\'SRM e dell\'officina.']] }],
-    quiz:[['Un conducente segnala un near miss. Lo scopo della raccolta è…', ['migliorare il sistema, non punire', 'avviare un procedimento disciplinare', 'archiviare la segnalazione'], 'La raccolta dei near miss è non punitiva: serve a far emergere i rischi latenti.'],
-      ['Perché l\'RSGS deve essere indipendente dalla produzione?', ['Per valutare rischi e prestazioni senza pressioni di orari e servizio', 'Per non partecipare alle riunioni operative', 'Perché non conosce l\'esercizio'], 'Un controllo esposto alle pressioni della produzione rischia di non vedere, o di non dire, quello che vede.']] },
-  { n:9, sub:'1.2', id:'sgc', title:'Il Sistema di Gestione delle Competenze', host:'rsgc', where:'Banchina · totem 9', draw:drawB9, board:{ pos:[60, 0, 9.7], ry:0 },
-    points:['Ciclo di vita: selezione, formazione iniziale, certificazione (esame e abilitazione), mantenimento, monitoraggio dell\'idoneità fisica e psicologica.', 'Responsabile SGC: programma la formazione, gestisce la validità delle abilitazioni, nomina le commissioni d\'esame.', 'Istruttori ed esaminatori: definiscono il fabbisogno formativo, valutano il mantenimento delle competenze, intervengono dopo assenze prolungate, non conformità o inconvenienti.'],
-    crit:null,
-    intro:['La patente non è un traguardo: è l\'<em>inizio</em> di un percorso monitorato. Selezione, formazione iniziale, certificazione, poi mantenimento con corsi periodici e monitoraggio costante dell\'idoneità.',
-      'Io programmo la formazione, tengo sotto controllo la validità delle abilitazioni e nomino le commissioni d\'esame. Istruttori ed esaminatori valutano le competenze sul campo.'],
-    labs:[{ type:'order', title:'Il ciclo di vita delle competenze', instr:'Ricostruisci le cinque fasi nell\'ordine giusto.', items:['Selezione · requisiti di base', 'Formazione iniziale · teoria e pratica', 'Certificazione · esame e abilitazione', 'Mantenimento · formazione continua', 'Monitoraggio · idoneità fisica e psicologica'] },
-      { type:'match', title:'Responsabile SGC o istruttori?', instr:'Associa ogni compito a chi lo svolge.', options:['Responsabile SGC', 'Istruttori ed esaminatori'],
-        rows:[['Programma le attività formative', 0], ['Gestisce e monitora la validità delle abilitazioni', 0], ['Nomina le commissioni d\'esame', 0], ['Definisce il fabbisogno formativo del personale da formare', 1], ['Valuta requisiti professionali e mantenimento delle competenze', 1], ['Interviene dopo assenze prolungate o inconvenienti di esercizio', 1]] }],
-    quiz:[['Ottenuta l\'abilitazione, il percorso…', ['continua con mantenimento e monitoraggio', 'è concluso per sempre', 'ricomincia dalla selezione'], 'Mantenimento e monitoraggio garantiscono che la competenza resti nel tempo.'],
-      ['Dopo un\'assenza prolungata dal servizio, chi interviene?', ['Istruttori ed esaminatori, valutando il mantenimento delle competenze', 'Nessuno: l\'abilitazione resta valida', 'Il capostazione'], 'È uno dei casi previsti: assenze prolungate, non conformità o inconvenienti di esercizio.']] },
-  { n:10, sub:'1.2', id:'srm', title:'Il Soggetto Responsabile della Manutenzione', host:'srm', where:'Banchina · totem 10', draw:drawB10, board:{ pos:[86, 0, 9.7], ry:0 },
-    points:['Assicura che il veicolo sia in condizioni sicure per la circolazione prima del suo utilizzo.', 'Quattro funzioni: gestione (supervisione e coordinamento), sviluppo (piani di manutenzione), gestione flotta (ritiro e riammissione in servizio), esecuzione (officina e attività sul mezzo).'],
-    crit:'La slide definisce l\'SRM «entità certificata»: verifica quale schema di certificazione o di riconoscimento si applica davvero al perimetro aziendale, prima di usare il termine in documenti ufficiali.',
-    intro:['Il treno che vedi arrivare è sicuro perché qualcuno lo ha <em>dichiarato idoneo</em> prima di mandarlo in linea. È il lavoro dell\'SRM, in quattro funzioni.',
-      'La <em>gestione</em> coordina; lo <em>sviluppo</em> scrive e aggiorna i piani di manutenzione; la <em>gestione della flotta</em> ritira e riammette i veicoli; l\'<em>esecuzione</em> è l\'officina, le mani sul mezzo.'],
-    labs:[{ type:'match', title:'Quale funzione SRM?', instr:'Associa ogni attività alla funzione dell\'SRM.', options:['Gestione', 'Sviluppo', 'Gestione flotta', 'Esecuzione'],
-      rows:[['Coordinare e supervisionare la manutenzione', 0], ['Aggiornare il piano di manutenzione del rotabile', 1], ['Ritirare dal servizio un treno con un difetto', 2], ['Sostituire le pastiglie dei freni in officina', 3], ['Riammettere in servizio il treno riparato', 2]] }],
-    quiz:[['Un treno ha un difetto che ne compromette la sicurezza. Quale funzione lo ritira dal servizio?', ['Gestione flotta', 'Sviluppo', 'Esecuzione'], 'Ritiro e riammissione in servizio sono il cuore della gestione della flotta.'],
-      ['Lo scopo dell\'SRM è…', ['garantire che il veicolo sia sicuro prima del suo utilizzo', 'programmare i turni dei conducenti', 'autorizzare la circolazione'], 'L\'SRM risponde della sicurezza del veicolo; la circolazione la autorizza il DE.']] },
-  { n:11, sub:'1.2', id:'infra', title:'La manutenzione dell\'infrastruttura', host:'mmi', where:'Banchina · totem 11, poi cantiere e galleria', draw:drawB11, board:{ pos:[92.5, 0, 9.7], ry:0 },
-    points:['Non esiste un solo responsabile: l\'infrastruttura è divisa in specialità.', 'Trazione elettrica e SSE: linea di contatto, sottostazioni, alimentazione.', 'Segnalamento (IS): distanziamento, segnali, apparati centrali.', 'Armamento: rotaie, scambi, sede. Opere civili: gallerie, stazioni, viadotti.'],
-    crit:'La slide promette un tracciato «privo di pericoli»: in un approccio risk-based l\'obiettivo è un rischio residuo controllato e accettabile, non il rischio zero. Per la metropolitana, inoltre, la ripartizione reale segue l\'organigramma per funzioni e non coincide con lo schema della slide (per esempio la linea di contatto è in carico a MMI, le SSE a ITR, segnalamento e impianti ausiliari a MMC, le opere civili a PMI): verificala sempre sull\'organigramma vigente.',
-    intro:['L\'infrastruttura è un puzzle di specialità: <em>trazione elettrica</em>, <em>segnalamento</em>, <em>armamento</em>, <em>opere civili</em>. Ognuna ha un responsabile che garantisce il proprio sottosistema.',
-      'Invece di spiegartelo, te lo faccio vedere. Oltre il cancello c\'è il cantiere del binario 1 e poi la galleria: trova quattro elementi e dimmi a quale specialità appartengono.'],
-    labs:[],
-    hunt:[
-      { id:'rotaie', pos:[80, -0.5, 4.3], label:'Esamina le rotaie di scorta', title:'Rotaie di scorta in cantiere', code:'Cantiere binario 1', ans:0, desc:'Barre di rotaia da 12 m accatastate per la sostituzione di un tratto usurato. Accanto, gli attrezzi per scambi e traverse.' },
-      { id:'segnale', pos:[99.4, 0.2, 4.1], label:'Esamina il segnale all\'imbocco', title:'Segnale luminoso di galleria', code:'Imbocco galleria · binario 1', ans:1, desc:'Segnale luminoso a due aspetti con cassa di manovra. Comanda il distanziamento dei treni ed è collegato all\'apparato centrale.' },
-      { id:'sse', pos:[112.5, -0.1, 7.3], label:'Esamina la porta della sottostazione', title:'Sottostazione elettrica (SSE)', code:'Galleria · Pk 7+050', ans:2, desc:'Porta di accesso alla sottostazione: 750 V in corrente continua per alimentare la linea di contatto. Accesso riservato al personale autorizzato.' },
-      { id:'fessure', pos:[116, -0.2, 3.7], label:'Esamina la piastrina sul piedritto', title:'Fessurimetro F-07', code:'Galleria · piedritto', ans:3, desc:'Piastrina di monitoraggio delle fessure nel rivestimento della galleria: si legge a ogni ispezione per verificare che le fessure non si allarghino.' }],
-    huntOpts:['Armamento', 'Segnalamento (IS)', 'Trazione elettrica / SSE', 'Opere civili'],
-    quiz:[['Segnali, sistemi di distanziamento e apparati centrali appartengono al…', ['Segnalamento (IS)', 'Armamento', 'Opere civili'], 'Il segnalamento garantisce il distanziamento dei treni: segnali, circuiti, apparati centrali.'],
-      ['In un approccio risk-based, «infrastruttura sicura» significa…', ['rischi individuati e ridotti a un livello accettabile, con controlli nel tempo', 'assenza assoluta di qualsiasi pericolo', 'nessuna manutenzione necessaria'], 'Il rischio zero non esiste: si identificano i pericoli, si riducono i rischi e si verificano le misure.']] },
-  { n:12, sub:'1.2', id:'uomo', title:'Fattore umano e operatore al centro', host:'cond', where:'Banchina · totem 12', draw:drawB12, board:{ pos:[72, 0, 9.7], ry:0 },
-    points:['Limiti umani: il SGS riconosce e gestisce fatica, carico di lavoro, distrazioni.', 'Near miss: eventi pericolosi senza conseguenze. Segnalarli disinnesca i rischi latenti sotto la punta dell\'iceberg.', 'Just Culture: si analizza il sistema; si tutela l\'errore in buona fede, non la negligenza volontaria.', 'L\'operatore al centro: cornice SGS (RSGS), regole e circolazione (DE), infrastruttura sicura (Resp. Infrastruttura), veicolo sicuro (SRM), operatore competente (SGC).'],
-    crit:'Nella slide la cornice SGS è «monitorata dal RSGS tramite ANSFISA»: più correttamente l\'RSGS monitora il SGS all\'interno dell\'azienda, mentre ANSFISA esercita la supervisione dall\'esterno. E la «totale sicurezza» va letta come rischio residuo controllato; l\'obiettivo riguarda passeggeri, lavoratori e terzi, non solo chi guida.',
-    intro:['Ieri, a fine turno, un passeggero è corso verso le porte mentre si chiudevano. L\'ho visto in tempo, nessuna conseguenza. Un <em>near miss</em>. L\'ho segnalato, anche se non era successo niente.',
-      'Sopra l\'acqua ci sono gli incidenti; sotto, molto più grande, ci sono i quasi-incidenti e i rischi latenti. La <em>Just Culture</em> mi tutela se sbaglio in buona fede, così posso raccontarlo e il sistema impara.'],
-    labs:[{ type:'match', title:'Just Culture: buona fede o negligenza?', instr:'Per ogni caso scegli come lo tratta la Just Culture.', options:['Errore in buona fede: si tutela e si analizza il sistema', 'Negligenza volontaria: non è tutelata'],
-      rows:[['Interpreta male un\'istruzione scritta in modo ambiguo', 0], ['Salta di proposito un controllo obbligatorio per recuperare ritardo', 1], ['Sbaglia a fine turno, dopo un carico di lavoro eccessivo', 0], ['Disattiva deliberatamente un dispositivo di sicurezza senza autorizzazione', 1], ['Segnala spontaneamente un proprio errore senza conseguenze', 0]] },
-      { type:'order', title:'Dall\'esterno al centro', instr:'Ordina gli anelli di protezione dal più esterno all\'operatore.', items:['Cornice SGS · RSGS', 'Regole e circolazione · DE', 'Infrastruttura sicura · Resp. Infrastruttura', 'Veicolo sicuro · SRM', 'Operatore competente · SGC'] }],
-    quiz:[['Che cos\'è un near miss?', ['Un evento pericoloso che non ha avuto conseguenze', 'Un incidente con feriti', 'Un guasto programmato'], 'È il quasi-incidente: nessun danno, ma un segnale prezioso sui rischi latenti.'],
-      ['Chi rende l\'operatore «competente, idoneo e consapevole»?', ['Il Sistema di Gestione delle Competenze', 'ANSFISA direttamente', 'Il capostazione'], 'È il centro degli anelli: selezione, formazione, certificazione, mantenimento e monitoraggio.']] }
-];
+const DEFAULT_PACK = {"formato":"sgs-learning","versione":1,"modulo":{"id":"M1","titolo":"Modulo 1","nome":"Conoscenza sulla normativa di riferimento","breve":"Normativa di riferimento","corso":"Corso Gestione della Circolazione","sottomoduli":[{"codice":"1.1","titolo":"Quadro normativo nazionale e ANSFISA"},{"codice":"1.2","titolo":"Principi del SGS e mansioni"}],"revisione":"0","data":"2026-09-25","stato":"Bozza","approvatoDa":"","fonti":"Slide «Modulo 1 – Conoscenza sulla normativa di riferimento» (corso abilitazione Gestione della Circolazione); sintesi del Modulo 1 in formato .md","guida":"istr","esaminatore":"esam","domande":10,"soglia":7,"allievo":"Allievo · Gestione della Circolazione","presentazione":"Primo giorno di corso, ma niente aula: la lezione si fa in stazione, con il servizio in corso. Dodici tappe tra atrio, aula, banchina e galleria. A ogni tappa trovi un pannello da studiare, un referente che ti spiega il suo ruolo, un laboratorio e un quiz. Alla fine, l'esame di modulo in aula.","apertura":"Brignole, ore 08:30. Primo giorno del corso di Gestione della Circolazione. Il Modulo 1, la normativa di riferimento, oggi si fa qui: in stazione, a servizio aperto. L'istruttore mi aspetta nell'atrio.","guidaSpiegazione":["Dodici tappe. A ognuna trovi un totem con il pannello da studiare e un referente che ti spiega il suo ruolo, ti propone un laboratorio e due domande. Prima il pannello, poi il referente.","Le prime tre tappe sono qui con me, in atrio. Poi il Tecnico SGS, il Direttore di Esercizio in aula, e giù in banchina gli altri. Per il cantiere ti serviranno gilet e casco: l'armadietto è in aula. Alla fine, l'esame con la commissione."]},"referenti":[{"id":"istr","ruolo":"Istruttore","struttura":"Sistema di Gestione delle Competenze","sigla":"IST","colore":"verde acqua","divisa":"polo blu","figura":"F","capelli":"coda","coloreCapelli":"castano","carnagione":2,"posa":"in piedi","casco":"no","saluto":"Benvenuto! Sei dei nostri per il corso di Gestione della Circolazione? Oggi il Modulo 1 lo facciamo qui, in stazione, con il servizio in corso.","domandaExtra":"","rispostaExtra":""},{"id":"tsgs","ruolo":"Tecnico SGS","struttura":"Funzione SGA · Sicurezza","sigla":"SGS","colore":"verde","divisa":"camicia bianca","figura":"M","capelli":"corti","coloreCapelli":"nero","carnagione":4,"posa":"legge","casco":"no","saluto":"Ciao. Io seguo i processi del SGS: rischi, indicatori, documenti. Chiedi pure.","domandaExtra":"","rispostaExtra":""},{"id":"de","ruolo":"Direttore di Esercizio","struttura":"DE · Esercizio","sigla":"DE","colore":"blu","divisa":"completo scuro","figura":"F","capelli":"caschetto","coloreCapelli":"nero","carnagione":1,"posa":"in piedi","casco":"no","saluto":"Buongiorno. Qui in aula facciamo il punto su chi risponde di cosa.","domandaExtra":"","rispostaExtra":""},{"id":"rsgs","ruolo":"Responsabile SGS","struttura":"RSGS · Sicurezza","sigla":"RSGS","colore":"verde","divisa":"maglia verde petrolio","figura":"M","capelli":"corti","coloreCapelli":"grigio","carnagione":2,"posa":"in piedi","casco":"no","saluto":"Buongiorno. Da qui vedo tutta la banchina: è il posto giusto per parlare di sicurezza.","domandaExtra":"","rispostaExtra":""},{"id":"rsgc","ruolo":"Responsabile SGC","struttura":"RSGC · Competenze","sigla":"RSGC","colore":"verde acqua","divisa":"maglia bordeaux","figura":"F","capelli":"lunghi","coloreCapelli":"nero","carnagione":5,"posa":"legge","casco":"no","saluto":"Ciao, benvenuto nel percorso. Le competenze sono la mia materia.","domandaExtra":"","rispostaExtra":""},{"id":"cond","ruolo":"Agente di condotta","struttura":"Esercizio MET · in pausa","sigla":"AdC","colore":"azzurro","divisa":"divisa condotta","figura":"M","capelli":"ricci","coloreCapelli":"nero","carnagione":6,"posa":"in piedi","casco":"no","saluto":"Ciao. Dieci minuti di pausa, poi riprendo il treno. Hai domande?","domandaExtra":"Com'è andata la segnalazione del near miss?","rispostaExtra":"L'RSGS mi ha chiamato per capire la dinamica, non per cercare un colpevole. Hanno allungato di un secondo l'avviso sonoro di chiusura porte in quella stazione. Un piccolo cambiamento, nato da una segnalazione."},{"id":"srm","ruolo":"Referente SRM","struttura":"MMV · Veicoli e Officina","sigla":"SRM","colore":"arancio","divisa":"lavoro arancio","figura":"F","capelli":"chignon","coloreCapelli":"biondo","carnagione":1,"posa":"in piedi","casco":"no","saluto":"Buongiorno! Stamattina tre treni riammessi in servizio dopo la manutenzione programmata.","domandaExtra":"Cosa succede se un treno ha un difetto in linea?","rispostaExtra":"Se il difetto riguarda la sicurezza, il treno esce dal servizio e rientra in officina. Torna in linea solo quando la gestione flotta lo riammette, con i controlli registrati."},{"id":"mmi","ruolo":"Referente Infrastruttura","struttura":"MMI · Manutenzione Infrastrutture","sigla":"MMI","colore":"ambra","divisa":"alta visibilità","figura":"M","capelli":"rasati","coloreCapelli":"castano","carnagione":3,"posa":"in piedi","casco":"sì","saluto":"Buongiorno. Oltre questo cancello c'è il nostro cantiere.","domandaExtra":"","rispostaExtra":""},{"id":"esam","ruolo":"Commissione d'esame","struttura":"Esaminatore · SGC","sigla":"ESA","colore":"viola","divisa":"giacca grigia","figura":"M","capelli":"rasati","coloreCapelli":"grigio","carnagione":3,"posa":"legge","casco":"no","saluto":"Buongiorno. Sono qui per la prova di fine modulo.","domandaExtra":"Chi nomina la commissione?","rispostaExtra":"Le commissioni d'esame le nomina il Responsabile del Sistema di Gestione delle Competenze. Questa di oggi è una simulazione: l'esame vero lo farai con la commissione ufficiale."}],"tappe":[{"n":1,"id":"mappa","sotto":"1.1","titolo":"La mappa della sicurezza","slot":"A1","referente":"istr","tipo":"standard","grafica":"dedicata","dedicata":"M1-01","modello":"sequenza","notaPannello":"Dal «rispetta la regola» al «governa il rischio»: le regole restano, ma sono scelte, verificate e migliorate in base ai rischi.","elementi":[{"titolo":"DPR 753/1980","testo":"Norme di polizia, sicurezza e regolarità dell'esercizio. Impostazione prescrittiva e frammentata.","testo2":""},{"titolo":"D.L. 109/2018","testo":"«Decreto Genova»: istituisce ANSFISA.","testo2":""},{"titolo":"ANSFISA","testo":"Agenzia Nazionale per la Sicurezza delle Ferrovie e delle Infrastrutture Stradali e Autostradali.","testo2":""},{"titolo":"AdS + SGS","testo":"L'Esercente opera con un'Autorizzazione di Sicurezza. Requisito chiave: un SGS attuato ed efficace.","testo2":""}],"punti":["Il DPR 753/1980 è la norma storica su polizia, sicurezza e regolarità dell'esercizio: impostazione prescrittiva e frammentata.","Il D.L. 109/2018, il «Decreto Genova», istituisce ANSFISA.","L'Esercente opera solo con un'Autorizzazione di Sicurezza (AdS). Il requisito chiave è un SGS attuato, monitorato e migliorato nel tempo."],"nota":"La slide parla di SGS «certificato». Più precisamente il SGS non riceve una certificazione di terza parte: è ANSFISA a valutarne la conformità e l'attuazione quando rilascia e mantiene l'AdS. Inoltre il DPR 753/1980 non è abrogato: resta in vigore per le parti non superate dalle norme successive. Il quadro vigente comprende anche atti successivi e provvedimenti ANSFISA: l'elenco aggiornato lo tiene l'RSGS.","spiegazione":["Per decenni il riferimento è stato il DPR 753 del 1980: regole prescrittive, sparse in tante norme. Dopo il crollo del ponte Morandi, il D.L. 109/2018, il «Decreto Genova», ha istituito <em>ANSFISA</em>.","Oggi un esercente come AMT può esercitare solo con un'<em>Autorizzazione di Sicurezza</em>, e al centro dell'autorizzazione c'è il suo <em>Sistema di Gestione della Sicurezza</em>. Non basta scriverlo: va attuato e migliorato."],"labs":[{"tipo":"ordina","titolo":"Metti in ordine l'evoluzione","istruzioni":"Tocca le carte nell'ordine cronologico e logico, dalla più antica all'attuale.","opzioni":[],"voci":[{"testo":"DPR 753/1980: norme prescrittive e frammentate","risposta":1,"spiegazione":""},{"testo":"D.L. 109/2018 «Decreto Genova»: nasce ANSFISA","risposta":2,"spiegazione":""},{"testo":"ANSFISA rilascia l'Autorizzazione di Sicurezza all'Esercente","risposta":3,"spiegazione":""},{"testo":"L'Esercente mantiene l'AdS attuando e migliorando il SGS","risposta":4,"spiegazione":""}]}],"quiz":[{"domanda":"Quale atto ha istituito ANSFISA?","corretta":"Il D.L. 109/2018, il «Decreto Genova»","errate":["Il DPR 753/1980","Un regolamento interno aziendale"],"spiegazione":"Il D.L. 109/2018 ha istituito l'Agenzia. Il DPR 753/1980 è la norma storica su polizia, sicurezza e regolarità dell'esercizio.","fonte":"Slide 3"},{"domanda":"Che cosa serve all'Esercente per operare nel nuovo quadro?","corretta":"Un'Autorizzazione di Sicurezza fondata su un SGS attuato ed efficace","errate":["Solo il rispetto del DPR 753/1980","Una certificazione di qualità ISO 9001"],"spiegazione":"Senza AdS non si esercisce. Il SGS non basta averlo scritto: va attuato, monitorato e migliorato. Una certificazione di qualità non lo sostituisce.","fonte":"Slide 3"}],"sopralluogo":[]},{"n":2,"id":"ansfisa","sotto":"1.1","titolo":"I compiti di ANSFISA","slot":"A2","referente":"istr","tipo":"standard","grafica":"dedicata","dedicata":"M1-02","modello":"colonne","notaPannello":"ANSFISA sorveglia dall'esterno. Il controllo interno di ogni giorno (monitoraggio e audit) resta all'Esercente, con il suo SGS.","elementi":[{"titolo":"Certificazione e autorizzazione","testo":"Rilascia certificazioni e autorizzazioni all'esercizio di impianti e sistemi di trasporto.","testo2":""},{"titolo":"Supervisione","testo":"Verifica che gli Esercenti rispettino le norme e siano coerenti con gli obiettivi di sicurezza prefissati.","testo2":""},{"titolo":"Regolamentazione","testo":"Emana disposizioni a carattere normativo: circolari, note, decreti.","testo2":""}],"punti":["Certificazione e autorizzazione: rilascia certificazioni e autorizzazioni all'esercizio di impianti e sistemi di trasporto.","Supervisione: verifica che gli Esercenti rispettino le norme e siano coerenti con gli obiettivi di sicurezza prefissati.","Regolamentazione: emana disposizioni a carattere normativo (circolari, note, decreti)."],"nota":"Attenzione a non confondere i piani: ANSFISA supervisiona dall'esterno, ma il monitoraggio continuo e gli audit interni sono compiti dell'Esercente, svolti attraverso il suo SGS.","spiegazione":["ANSFISA fa tre mestieri: <em>autorizza</em>, <em>sorveglia</em> e <em>regola</em>. Rilascia autorizzazioni, verifica sul campo che gli esercenti rispettino le norme ed emana circolari, note e decreti.","Per noi significa una cosa sola: dobbiamo poter dimostrare, con evidenze, che il sistema funziona. Anche quando nessuno ci controlla."],"labs":[{"tipo":"abbina","titolo":"Chi fa cosa, per ANSFISA","istruzioni":"Associa ogni attività al compito dell'Agenzia.","opzioni":["Certificazione e autorizzazione","Supervisione","Regolamentazione"],"voci":[{"testo":"Rilascio dell'Autorizzazione di Sicurezza all'Esercente","risposta":"Certificazione e autorizzazione","spiegazione":""},{"testo":"Verifica presso l'Esercente del rispetto delle norme","risposta":"Supervisione","spiegazione":""},{"testo":"Emanazione di una circolare con nuove disposizioni","risposta":"Regolamentazione","spiegazione":""},{"testo":"Controllo di coerenza con gli obiettivi di sicurezza prefissati","risposta":"Supervisione","spiegazione":""},{"testo":"Autorizzazione all'esercizio di un nuovo impianto","risposta":"Certificazione e autorizzazione","spiegazione":""},{"testo":"Nota con indicazioni applicative per gli Esercenti","risposta":"Regolamentazione","spiegazione":""}]}],"quiz":[{"domanda":"Una circolare ANSFISA con nuove disposizioni rientra nella…","corretta":"Regolamentazione","errate":["Supervisione","Certificazione"],"spiegazione":"Circolari, note e decreti sono disposizioni a carattere normativo: è la funzione di regolamentazione.","fonte":"Slide 4"},{"domanda":"Chi svolge il controllo interno quotidiano sul funzionamento del SGS?","corretta":"L'Esercente, con monitoraggio e audit interni","errate":["ANSFISA, presente in ogni stazione","Nessuno: basta avere l'AdS"],"spiegazione":"ANSFISA supervisiona dall'esterno; il monitoraggio continuo e gli audit interni restano all'Esercente.","fonte":"Slide 4"}],"sopralluogo":[]},{"n":3,"id":"sgs","sotto":"1.2","titolo":"Che cos'è il SGS","slot":"A3","referente":"istr","tipo":"standard","grafica":"dedicata","dedicata":"M1-03","modello":"colonne","notaPannello":"Ambito indicato dal corso: sistemi a guida vincolata (metropolitana, cremagliera Principe–Granarolo, linea filoviaria*). *Filovia: perimetro in corso di definizione.","elementi":[{"titolo":"Organizzazione","testo":"Struttura chiara, ruoli definiti, responsabilità assegnate.","testo2":""},{"titolo":"Procedure","testo":"Regole operative standardizzate per l'esercizio e la manutenzione.","testo2":""},{"titolo":"Risorse","testo":"Personale formato, mezzi sicuri, infrastrutture adeguate.","testo2":""}],"punti":["Organizzazione: struttura chiara, ruoli definiti, responsabilità assegnate.","Procedure: regole operative standardizzate per l'esercizio e la manutenzione.","Risorse: personale formato, mezzi sicuri, infrastrutture adeguate.","Ambito indicato dal corso: sistemi a guida vincolata (metropolitana, cremagliera Principe–Granarolo, linea filoviaria)."],"nota":"Per la linea filoviaria l'inclusione nel perimetro del SGS è ancora in corso di definizione: verifica il perimetro vigente con l'RSGS prima di darla per acquisita. La Ferrovia Genova–Casella non rientra nel perimetro SGS TGV trattato nel corso.","spiegazione":["Il SGS è un ingranaggio a tre ruote: <em>organizzazione</em>, cioè chi fa cosa e con quali responsabilità; <em>procedure</em>, cioè come si fa; <em>risorse</em>, cioè persone formate, mezzi e infrastrutture adeguati.","Se una ruota si ferma, si ferma tutto: una procedura perfetta con personale non formato non protegge nessuno."],"labs":[{"tipo":"abbina","titolo":"Organizzazione, procedure o risorse?","istruzioni":"Associa ogni elemento a una delle tre ruote del SGS.","opzioni":["Organizzazione","Procedure","Risorse"],"voci":[{"testo":"Organigramma con ruoli e deleghe","risposta":"Organizzazione","spiegazione":""},{"testo":"Istruzione operativa per la messa in servizio dei treni","risposta":"Procedure","spiegazione":""},{"testo":"Personale formato e abilitato","risposta":"Risorse","spiegazione":""},{"testo":"Veicoli manutenuti e sicuri","risposta":"Risorse","spiegazione":""},{"testo":"Responsabilità assegnate per iscritto","risposta":"Organizzazione","spiegazione":""},{"testo":"Piano di manutenzione con cadenze e controlli","risposta":"Procedure","spiegazione":""}]}],"quiz":[{"domanda":"Su quali tre elementi si regge il SGS?","corretta":"Organizzazione, procedure, risorse","errate":["Norme, sanzioni, controlli","Treni, stazioni, gallerie"],"spiegazione":"Sono le tre ruote della slide: struttura e responsabilità, regole operative, persone e mezzi adeguati.","fonte":"Slide 6"},{"domanda":"Secondo il corso, a quali sistemi si applica la mappa organizzativa del SGS?","corretta":"Ai sistemi a guida vincolata: metropolitana, cremagliera Principe–Granarolo, filovia","errate":["Solo agli autobus urbani","A tutti i servizi aziendali, autobus compresi"],"spiegazione":"È l'ambito indicato dalle slide. Per la filovia ricorda la nota: il perimetro è in corso di definizione.","fonte":"Slide 6"}],"sopralluogo":[]},{"n":4,"id":"proattivo","sotto":"1.2","titolo":"Reattivo o proattivo","slot":"A4","referente":"tsgs","tipo":"standard","grafica":"dedicata","dedicata":"M1-04","modello":"confronto","notaPannello":"","elementi":[{"titolo":"","testo":"Approccio reattivo · il passato","testo2":"Proattivo / risk-based · il SGS"},{"titolo":"Mantra","testo":"Risolviamo il problema dopo che si è rotto.","testo2":"Valutiamo i rischi prima che accada l'evento."},{"titolo":"Azione","testo":"Applicazione cieca delle regole (prescrittivo).","testo2":"Analisi continua del sistema e dei pericoli."},{"titolo":"Focus","testo":"Trovare il colpevole (errore umano).","testo2":"Capire perché il sistema ha fallito (Just Culture)."},{"titolo":"Manutenzione","testo":"Interventi a guasto.","testo2":"Preventiva e costantemente monitorata."}],"punti":["Reattivo: si risolve dopo il guasto, si applicano le regole senza chiedersi perché, si cerca il colpevole, si interviene a guasto.","Proattivo (risk-based): si valutano i rischi prima dell'evento, si analizza di continuo il sistema, si capisce perché ha fallito, la manutenzione è preventiva e monitorata."],"nota":"«Proattivo» non significa che le regole diventano facoltative: significa conoscere i rischi che ogni regola controlla, verificarne l'efficacia e migliorarla.","spiegazione":["Il vecchio modo di lavorare era <em>reattivo</em>: si rompe, si ripara, si cerca il colpevole. Il SGS ci chiede di essere <em>proattivi</em>: guardare i dati, valutare i rischi prima che l'evento accada, capire perché il sistema ha lasciato passare l'errore."],"labs":[{"tipo":"abbina","titolo":"Da che parte sta?","istruzioni":"Per ogni frase scegli l'approccio.","opzioni":["Reattivo","Proattivo"],"voci":[{"testo":"«Risolviamo il problema dopo che si è rotto»","risposta":"Reattivo","spiegazione":""},{"testo":"«Valutiamo i rischi prima che accada l'evento»","risposta":"Proattivo","spiegazione":""},{"testo":"Applicazione cieca delle regole","risposta":"Reattivo","spiegazione":""},{"testo":"Analisi continua del sistema e dei pericoli","risposta":"Proattivo","spiegazione":""},{"testo":"Cerchiamo il colpevole","risposta":"Reattivo","spiegazione":""},{"testo":"Capiamo perché il sistema ha fallito","risposta":"Proattivo","spiegazione":""},{"testo":"Interveniamo solo a guasto","risposta":"Reattivo","spiegazione":""},{"testo":"Manutenzione preventiva e monitorata","risposta":"Proattivo","spiegazione":""}]}],"quiz":[{"domanda":"Porte di un treno con guasti ricorrenti: qual è la risposta proattiva?","corretta":"Analizzo i dati dei guasti e intervengo prima del prossimo","errate":["Aspetto il prossimo guasto e riparo","Cerco chi ha chiuso male la porta"],"spiegazione":"Proattivo vuol dire usare i dati per prevenire, non attendere il prossimo evento né cercare un colpevole.","fonte":"Slide 7"},{"domanda":"Nel modello proattivo, le regole…","corretta":"si applicano sapendo quali rischi controllano, e si migliorano","errate":["si applicano senza chiedersi il perché","diventano facoltative"],"spiegazione":"Le regole restano obbligatorie: cambia il modo di gestirle, collegato ai rischi e verificato nel tempo.","fonte":"Slide 7"}],"sopralluogo":[]},{"n":5,"id":"pdca","sotto":"1.2","titolo":"Il ciclo PDCA","slot":"A5","referente":"tsgs","tipo":"standard","grafica":"dedicata","dedicata":"M1-05","modello":"ciclo","notaPannello":"La sicurezza non si ferma mai","elementi":[{"titolo":"Plan","testo":"Valutazione dei rischi: analisi preventiva degli scenari.","testo2":""},{"titolo":"Do","testo":"Attuazione delle misure: applicazione delle procedure operative.","testo2":""},{"titolo":"Check","testo":"Monitoraggio e audit: controllo dell'efficacia sul campo.","testo2":""},{"titolo":"Act","testo":"Miglioramento: correzione delle anomalie e aggiornamento del SGS.","testo2":""}],"punti":["Plan: valutazione dei rischi, analisi preventiva degli scenari.","Do: attuazione delle misure, applicazione delle procedure operative.","Check: monitoraggio e audit, controllo dell'efficacia sul campo.","Act: miglioramento, correzione delle anomalie e aggiornamento del SGS. Poi il ciclo ricomincia."],"nota":"","spiegazione":["Il SGS vive in un ciclo che non si chiude mai: <em>Plan</em>, valuto i rischi; <em>Do</em>, applico le misure; <em>Check</em>, verifico sul campo con monitoraggio e audit; <em>Act</em>, correggo e aggiorno. E si riparte."],"labs":[{"tipo":"ordina","titolo":"Ricostruisci il ciclo","istruzioni":"Metti le fasi in sequenza, partendo dalla pianificazione.","opzioni":[],"voci":[{"testo":"Plan · valutazione dei rischi","risposta":1,"spiegazione":""},{"testo":"Do · attuazione delle misure e delle procedure","risposta":2,"spiegazione":""},{"testo":"Check · monitoraggio e audit sul campo","risposta":3,"spiegazione":""},{"testo":"Act · correzione e aggiornamento del SGS","risposta":4,"spiegazione":""}]},{"tipo":"abbina","titolo":"In quale fase?","istruzioni":"Associa ogni attività alla sua fase.","opzioni":["Plan","Do","Check","Act"],"voci":[{"testo":"Analisi preventiva degli scenari di pericolo","risposta":"Plan","spiegazione":""},{"testo":"Applicazione delle procedure operative","risposta":"Do","spiegazione":""},{"testo":"Audit sul campo","risposta":"Check","spiegazione":""},{"testo":"Correzione di un'anomalia e revisione della procedura","risposta":"Act","spiegazione":""},{"testo":"Monitoraggio degli indicatori di sicurezza","risposta":"Check","spiegazione":""}]}],"quiz":[{"domanda":"Un audit sul campo rientra nella fase…","corretta":"Check","errate":["Plan","Act"],"spiegazione":"Monitoraggio e audit verificano l'efficacia sul campo: è la fase di verifica.","fonte":"Slide 8"},{"domanda":"Dopo la fase Act, il ciclo…","corretta":"ricomincia: la sicurezza non si ferma mai","errate":["si chiude definitivamente","passa ad ANSFISA"],"spiegazione":"È un ciclo di miglioramento continuo: ogni correzione diventa l'ingresso della pianificazione successiva.","fonte":"Slide 8"}],"sopralluogo":[]},{"n":6,"id":"organizzazione","sotto":"1.2","titolo":"Organizzazione e pilastri","slot":"W1","referente":"de","tipo":"standard","grafica":"dedicata","dedicata":"M1-06","modello":"elenco","notaPannello":"Responsabilità indipendenti e separate: collaborano, ma si controllano a vicenda. La responsabilità ultima resta dell'Esercente.","elementi":[{"titolo":"DE · Direttore di Esercizio","testo":"Operatività e circolazione.","testo2":""},{"titolo":"RSGS · Responsabile SGS","testo":"Garanzia e controllo della sicurezza.","testo2":""},{"titolo":"Manutenzione · SRM e Resp. Infrastruttura","testo":"Sicurezza di veicoli e impianti.","testo2":""},{"titolo":"RSGC · Responsabile SGC","testo":"Acquisizione e mantenimento delle competenze.","testo2":""}],"punti":["Nell'organigramma per funzioni del Servizio su Ferro (FER), SGS (SGA) e SGC (SGM) sono funzioni collegate direttamente al Servizio.","Metro (MET): esercizio (DCT), manutenzione infrastrutture (MMI), segnalamento e impianti ausiliari (MMC), veicoli e officina (MMV).","Quattro pilastri dell'Esercente: DE (operatività e circolazione), RSGS (garanzia e controllo), Manutenzione (SRM e Resp. Infrastruttura), RSGC (competenze).","Responsabilità indipendenti e separate, per garantire il controllo reciproco. La responsabilità ultima resta dell'Esercente."],"nota":"Il pannello riporta solo sigle e funzioni: gli organigrammi delle slide contengono nominativi, che non servono per l'apprendimento e cambiano nel tempo. Fai sempre riferimento all'organigramma vigente.","spiegazione":["Le slide mostrano due organigrammi. Quello per funzioni del <em>Servizio su Ferro</em> è il più utile per voi: la Metro con esercizio e manutenzioni, e accanto il Sistema di Gestione della Sicurezza e quello delle Competenze.","Poi ci sono i <em>quattro pilastri</em>: io, Direttore di Esercizio; l'RSGS; la manutenzione con SRM e responsabili dell'infrastruttura; il Responsabile SGC. Collaboriamo, ma nessuno controlla se stesso."],"labs":[{"tipo":"abbina","titolo":"Sigle del Servizio su Ferro","istruzioni":"Associa ogni sigla alla sua funzione.","opzioni":["Sistema di Gestione della Sicurezza","Sistema di Gestione delle Competenze","Esercizio e Manutenzione Metro","Manut. Veicoli e Officina","Manut. Segnalamento e Imp. Ausiliari","Manut. Infrastrutture"],"voci":[{"testo":"SGA","risposta":"Sistema di Gestione della Sicurezza","spiegazione":""},{"testo":"SGM","risposta":"Sistema di Gestione delle Competenze","spiegazione":""},{"testo":"MET","risposta":"Esercizio e Manutenzione Metro","spiegazione":""},{"testo":"MMV","risposta":"Manut. Veicoli e Officina","spiegazione":""},{"testo":"MMC","risposta":"Manut. Segnalamento e Imp. Ausiliari","spiegazione":""},{"testo":"MMI","risposta":"Manut. Infrastrutture","spiegazione":""}]},{"tipo":"abbina","titolo":"I quattro pilastri","istruzioni":"Associa ogni ambito di responsabilità al suo pilastro.","opzioni":["DE","RSGS","SRM e Resp. Infrastruttura","RSGC"],"voci":[{"testo":"Operatività e circolazione","risposta":"DE","spiegazione":""},{"testo":"Garanzia e controllo della sicurezza","risposta":"RSGS","spiegazione":""},{"testo":"Sicurezza di veicoli e impianti","risposta":"SRM e Resp. Infrastruttura","spiegazione":""},{"testo":"Acquisizione e mantenimento delle competenze","risposta":"RSGC","spiegazione":""}]}],"quiz":[{"domanda":"Perché i quattro ruoli hanno responsabilità separate?","corretta":"Per garantire il controllo reciproco","errate":["Per ridurre il numero di riunioni","Perché lavorano per aziende diverse"],"spiegazione":"Chi governa la produzione non deve essere anche chi la controlla: la separazione rende il controllo credibile.","fonte":"Slide 9-11"},{"domanda":"Chi ha la responsabilità ultima del sistema?","corretta":"L'Esercente","errate":["ANSFISA","Il singolo conducente"],"spiegazione":"Le funzioni si dividono i compiti, ma la responsabilità ultima del sistema resta all'Esercente.","fonte":"Slide 9-11"}],"sopralluogo":[]},{"n":7,"id":"de","sotto":"1.2","titolo":"Il Direttore di Esercizio","slot":"W2","referente":"de","tipo":"standard","grafica":"dedicata","dedicata":"M1-07","modello":"scheda","notaPannello":"","elementi":[{"titolo":"Mission","testo":"Il capo operativo: responsabile della sicurezza e della regolarità dell'esercizio del sistema di trasporto.","testo2":""},{"titolo":"","testo":"Autorizza la circolazione e le operazioni.","testo2":""},{"titolo":"","testo":"Garantisce la conformità alle disposizioni ANSFISA.","testo2":""},{"titolo":"","testo":"Emette le certificazioni annuali di manutenzione.","testo2":""},{"titolo":"Interfaccia con il conducente","testo":"È la massima autorità sulla linea. Nota: ruolo incompatibile con quello di RSGS.","testo2":""}],"punti":["Il capo operativo: responsabile della sicurezza e della regolarità dell'esercizio.","Autorizza la circolazione e le operazioni; garantisce la conformità alle disposizioni ANSFISA; emette le certificazioni annuali di manutenzione (come da slide).","Per il conducente è la massima autorità sulla linea. Ruolo incompatibile con quello di RSGS."],"nota":"La slide scrive che l'incompatibilità DE/RSGS è «per legge»: nel materiale ufficiale va citata la fonte puntuale (disposizioni ANSFISA e atti di nomina). Anche la «certificazione annuale di manutenzione» va ricondotta alla procedura aziendale che la disciplina.","spiegazione":["Io rispondo della <em>sicurezza e regolarità dell'esercizio</em>: autorizzo la circolazione e le operazioni e garantisco che l'esercizio sia conforme alle disposizioni ANSFISA.","Una cosa che dovete ricordare: il mio ruolo è <em>incompatibile</em> con quello di RSGS. Chi decide come si esercisce non può essere anche chi ne controlla la sicurezza."],"labs":[{"tipo":"scelta","titolo":"Le responsabilità del DE","istruzioni":"Seleziona tutte e sole le responsabilità attribuite al DE nel corso.","opzioni":[],"voci":[{"testo":"Autorizza la circolazione e le operazioni","risposta":"Sì","spiegazione":""},{"testo":"Garantisce la conformità alle disposizioni ANSFISA","risposta":"Sì","spiegazione":""},{"testo":"Emette le certificazioni annuali di manutenzione","risposta":"Sì","spiegazione":""},{"testo":"Conduce gli audit interni del SGS","risposta":"No","spiegazione":"È un compito dell'RSGS."},{"testo":"Nomina le commissioni d'esame","risposta":"No","spiegazione":"È un compito del Responsabile SGC."},{"testo":"Esegue le riparazioni in officina","risposta":"No","spiegazione":"È la funzione di esecuzione dell'SRM."}]}],"quiz":[{"domanda":"Il DE può ricoprire anche il ruolo di RSGS?","corretta":"No, i due ruoli sono incompatibili","errate":["Sì, se l'azienda è piccola","Sì, con una delega scritta"],"spiegazione":"Il controllo della sicurezza deve essere indipendente da chi governa la produzione.","fonte":"Slide 12"},{"domanda":"Per il conducente, il DE è…","corretta":"la massima autorità sulla linea","errate":["un consulente esterno","il responsabile delle abilitazioni"],"spiegazione":"È il capo operativo dell'esercizio. Le abilitazioni sono gestite dal Sistema di Gestione delle Competenze.","fonte":"Slide 12"}],"sopralluogo":[]},{"n":8,"id":"rsgs","sotto":"1.2","titolo":"Il Responsabile del SGS","slot":"P1","referente":"rsgs","tipo":"standard","grafica":"dedicata","dedicata":"M1-08","modello":"scheda","notaPannello":"","elementi":[{"titolo":"Mission","testo":"L'architetto e il controllore: assicura che i processi di sicurezza siano predisposti, attuati e tenuti aggiornati.","testo2":""},{"titolo":"","testo":"Totalmente indipendente dalle pressioni della produzione e della circolazione.","testo2":""},{"titolo":"","testo":"Gestisce la valutazione dei rischi (risk assessment).","testo2":""},{"titolo":"","testo":"Monitora le prestazioni e conduce gli audit.","testo2":""},{"titolo":"Interfaccia con il conducente","testo":"Raccoglie i dati su inconvenienti e near miss per migliorare il sistema, non per punire.","testo2":""}],"punti":["L'architetto e il controllore: assicura che i processi di sicurezza siano predisposti, attuati e tenuti aggiornati.","Indipendente dalle pressioni della produzione e della circolazione.","Gestisce la valutazione dei rischi, monitora le prestazioni e conduce gli audit.","Raccoglie i dati su inconvenienti e near miss per migliorare il sistema, non per punire."],"nota":"","spiegazione":["Il mio lavoro è progettare e controllare: che i processi di sicurezza esistano, siano applicati e restino aggiornati. Per farlo devo essere <em>indipendente</em> da orari, produzione e circolazione.","Da voi mi servono soprattutto le <em>segnalazioni</em>, anche dei quasi-incidenti. Non servono a punire: servono a vedere i rischi prima che diventino incidenti."],"labs":[{"tipo":"scelta","titolo":"Che cosa fa l'RSGS?","istruzioni":"Seleziona tutte e sole le responsabilità dell'RSGS.","opzioni":[],"voci":[{"testo":"È indipendente dalle pressioni della produzione","risposta":"Sì","spiegazione":""},{"testo":"Gestisce la valutazione dei rischi","risposta":"Sì","spiegazione":""},{"testo":"Monitora le prestazioni e conduce gli audit","risposta":"Sì","spiegazione":""},{"testo":"Raccoglie i near miss per migliorare, non per punire","risposta":"Sì","spiegazione":""},{"testo":"Autorizza la partenza dei treni","risposta":"No","spiegazione":"L'autorizzazione della circolazione è del DE."},{"testo":"Esegue la manutenzione dei veicoli","risposta":"No","spiegazione":"È compito dell'SRM e dell'officina."}]}],"quiz":[{"domanda":"Un conducente segnala un near miss. Lo scopo della raccolta è…","corretta":"migliorare il sistema, non punire","errate":["avviare un procedimento disciplinare","archiviare la segnalazione"],"spiegazione":"La raccolta dei near miss è non punitiva: serve a far emergere i rischi latenti.","fonte":"Slide 13"},{"domanda":"Perché l'RSGS deve essere indipendente dalla produzione?","corretta":"Per valutare rischi e prestazioni senza pressioni di orari e servizio","errate":["Per non partecipare alle riunioni operative","Perché non conosce l'esercizio"],"spiegazione":"Un controllo esposto alle pressioni della produzione rischia di non vedere, o di non dire, quello che vede.","fonte":"Slide 13"}],"sopralluogo":[]},{"n":9,"id":"sgc","sotto":"1.2","titolo":"Il Sistema di Gestione delle Competenze","slot":"P2","referente":"rsgc","tipo":"standard","grafica":"dedicata","dedicata":"M1-09","modello":"sequenza","notaPannello":"La patente non è un traguardo: è l'inizio di un percorso monitorato.","elementi":[{"titolo":"Selezione","testo":"Requisiti di base.","testo2":""},{"titolo":"Formazione iniziale","testo":"Apprendimento teorico e pratico.","testo2":""},{"titolo":"Certificazione","testo":"Esame e rilascio dell'abilitazione.","testo2":""},{"titolo":"Mantenimento","testo":"Formazione continua e corsi periodici.","testo2":""},{"titolo":"Monitoraggio","testo":"Verifica costante dell'idoneità fisica e psicologica.","testo2":""}],"punti":["Ciclo di vita: selezione, formazione iniziale, certificazione (esame e abilitazione), mantenimento, monitoraggio dell'idoneità fisica e psicologica.","Responsabile SGC: programma la formazione, gestisce la validità delle abilitazioni, nomina le commissioni d'esame.","Istruttori ed esaminatori: definiscono il fabbisogno formativo, valutano il mantenimento delle competenze, intervengono dopo assenze prolungate, non conformità o inconvenienti."],"nota":"","spiegazione":["La patente non è un traguardo: è l'<em>inizio</em> di un percorso monitorato. Selezione, formazione iniziale, certificazione, poi mantenimento con corsi periodici e monitoraggio costante dell'idoneità.","Io programmo la formazione, tengo sotto controllo la validità delle abilitazioni e nomino le commissioni d'esame. Istruttori ed esaminatori valutano le competenze sul campo."],"labs":[{"tipo":"ordina","titolo":"Il ciclo di vita delle competenze","istruzioni":"Ricostruisci le cinque fasi nell'ordine giusto.","opzioni":[],"voci":[{"testo":"Selezione · requisiti di base","risposta":1,"spiegazione":""},{"testo":"Formazione iniziale · teoria e pratica","risposta":2,"spiegazione":""},{"testo":"Certificazione · esame e abilitazione","risposta":3,"spiegazione":""},{"testo":"Mantenimento · formazione continua","risposta":4,"spiegazione":""},{"testo":"Monitoraggio · idoneità fisica e psicologica","risposta":5,"spiegazione":""}]},{"tipo":"abbina","titolo":"Responsabile SGC o istruttori?","istruzioni":"Associa ogni compito a chi lo svolge.","opzioni":["Responsabile SGC","Istruttori ed esaminatori"],"voci":[{"testo":"Programma le attività formative","risposta":"Responsabile SGC","spiegazione":""},{"testo":"Gestisce e monitora la validità delle abilitazioni","risposta":"Responsabile SGC","spiegazione":""},{"testo":"Nomina le commissioni d'esame","risposta":"Responsabile SGC","spiegazione":""},{"testo":"Definisce il fabbisogno formativo del personale da formare","risposta":"Istruttori ed esaminatori","spiegazione":""},{"testo":"Valuta requisiti professionali e mantenimento delle competenze","risposta":"Istruttori ed esaminatori","spiegazione":""},{"testo":"Interviene dopo assenze prolungate o inconvenienti di esercizio","risposta":"Istruttori ed esaminatori","spiegazione":""}]}],"quiz":[{"domanda":"Ottenuta l'abilitazione, il percorso…","corretta":"continua con mantenimento e monitoraggio","errate":["è concluso per sempre","ricomincia dalla selezione"],"spiegazione":"Mantenimento e monitoraggio garantiscono che la competenza resti nel tempo.","fonte":"Slide 14-15"},{"domanda":"Dopo un'assenza prolungata dal servizio, chi interviene?","corretta":"Istruttori ed esaminatori, valutando il mantenimento delle competenze","errate":["Nessuno: l'abilitazione resta valida","Il capostazione"],"spiegazione":"È uno dei casi previsti: assenze prolungate, non conformità o inconvenienti di esercizio.","fonte":"Slide 14-15"}],"sopralluogo":[]},{"n":10,"id":"srm","sotto":"1.2","titolo":"Il Soggetto Responsabile della Manutenzione","slot":"P4","referente":"srm","tipo":"standard","grafica":"dedicata","dedicata":"M1-10","modello":"sequenza","notaPannello":"Nessun treno va in linea se non è stato dichiarato idoneo: dal piano di manutenzione all'officina, fino alla riammissione in servizio.","elementi":[{"titolo":"Gestione","testo":"Supervisione e coordinamento.","testo2":""},{"titolo":"Sviluppo","testo":"Creazione e aggiornamento dei Piani di manutenzione.","testo2":""},{"titolo":"Gestione flotta","testo":"Ritiro e riammissione in servizio dei veicoli.","testo2":""},{"titolo":"Esecuzione","testo":"L'officina e le attività fisiche sul mezzo.","testo2":""}],"punti":["Assicura che il veicolo sia in condizioni sicure per la circolazione prima del suo utilizzo.","Quattro funzioni: gestione (supervisione e coordinamento), sviluppo (piani di manutenzione), gestione flotta (ritiro e riammissione in servizio), esecuzione (officina e attività sul mezzo)."],"nota":"La slide definisce l'SRM «entità certificata»: verifica quale schema di certificazione o di riconoscimento si applica davvero al perimetro aziendale, prima di usare il termine in documenti ufficiali.","spiegazione":["Il treno che vedi arrivare è sicuro perché qualcuno lo ha <em>dichiarato idoneo</em> prima di mandarlo in linea. È il lavoro dell'SRM, in quattro funzioni.","La <em>gestione</em> coordina; lo <em>sviluppo</em> scrive e aggiorna i piani di manutenzione; la <em>gestione della flotta</em> ritira e riammette i veicoli; l'<em>esecuzione</em> è l'officina, le mani sul mezzo."],"labs":[{"tipo":"abbina","titolo":"Quale funzione SRM?","istruzioni":"Associa ogni attività alla funzione dell'SRM.","opzioni":["Gestione","Sviluppo","Gestione flotta","Esecuzione"],"voci":[{"testo":"Coordinare e supervisionare la manutenzione","risposta":"Gestione","spiegazione":""},{"testo":"Aggiornare il piano di manutenzione del rotabile","risposta":"Sviluppo","spiegazione":""},{"testo":"Ritirare dal servizio un treno con un difetto","risposta":"Gestione flotta","spiegazione":""},{"testo":"Sostituire le pastiglie dei freni in officina","risposta":"Esecuzione","spiegazione":""},{"testo":"Riammettere in servizio il treno riparato","risposta":"Gestione flotta","spiegazione":""}]}],"quiz":[{"domanda":"Un treno ha un difetto che ne compromette la sicurezza. Quale funzione lo ritira dal servizio?","corretta":"Gestione flotta","errate":["Sviluppo","Esecuzione"],"spiegazione":"Ritiro e riammissione in servizio sono il cuore della gestione della flotta.","fonte":"Slide 16"},{"domanda":"Lo scopo dell'SRM è…","corretta":"garantire che il veicolo sia sicuro prima del suo utilizzo","errate":["programmare i turni dei conducenti","autorizzare la circolazione"],"spiegazione":"L'SRM risponde della sicurezza del veicolo; la circolazione la autorizza il DE.","fonte":"Slide 16"}],"sopralluogo":[]},{"n":11,"id":"infra","sotto":"1.2","titolo":"La manutenzione dell'infrastruttura","slot":"P5","referente":"mmi","tipo":"sopralluogo","grafica":"dedicata","dedicata":"M1-11","modello":"colonne","notaPannello":"Non esiste un solo responsabile: ogni specialità garantisce la sicurezza del proprio sottosistema.","elementi":[{"titolo":"Trazione elettrica / SSE","testo":"Linea di contatto, sottostazioni e alimentazione.","testo2":""},{"titolo":"Segnalamento (IS)","testo":"Distanziamento, segnali, apparati centrali.","testo2":""},{"titolo":"Armamento","testo":"Rotaie, scambi e sede ferroviaria.","testo2":""},{"titolo":"Opere civili","testo":"Gallerie, stazioni, viadotti.","testo2":""}],"punti":["Non esiste un solo responsabile: l'infrastruttura è divisa in specialità.","Trazione elettrica e SSE: linea di contatto, sottostazioni, alimentazione.","Segnalamento (IS): distanziamento, segnali, apparati centrali.","Armamento: rotaie, scambi, sede. Opere civili: gallerie, stazioni, viadotti."],"nota":"La slide promette un tracciato «privo di pericoli»: in un approccio risk-based l'obiettivo è un rischio residuo controllato e accettabile, non il rischio zero. Per la metropolitana, inoltre, la ripartizione reale segue l'organigramma per funzioni e non coincide con lo schema della slide (per esempio la linea di contatto è in carico a MMI, le SSE a ITR, segnalamento e impianti ausiliari a MMC, le opere civili a PMI): verificala sempre sull'organigramma vigente.","spiegazione":["L'infrastruttura è un puzzle di specialità: <em>trazione elettrica</em>, <em>segnalamento</em>, <em>armamento</em>, <em>opere civili</em>. Ognuna ha un responsabile che garantisce il proprio sottosistema.","Invece di spiegartelo, te lo faccio vedere. Oltre il cancello c'è il cantiere del binario 1 e poi la galleria: trova quattro elementi e dimmi a quale specialità appartengono."],"labs":[],"quiz":[{"domanda":"Segnali, sistemi di distanziamento e apparati centrali appartengono al…","corretta":"Segnalamento (IS)","errate":["Armamento","Opere civili"],"spiegazione":"Il segnalamento garantisce il distanziamento dei treni: segnali, circuiti, apparati centrali.","fonte":"Slide 17"},{"domanda":"In un approccio risk-based, «infrastruttura sicura» significa…","corretta":"rischi individuati e ridotti a un livello accettabile, con controlli nel tempo","errate":["assenza assoluta di qualsiasi pericolo","nessuna manutenzione necessaria"],"spiegazione":"Il rischio zero non esiste: si identificano i pericoli, si riducono i rischi e si verificano le misure.","fonte":"Slide 17"}],"sopralluogo":[{"oggetto":"rotaie","etichetta":"Esamina le rotaie di scorta","titolo":"Rotaie di scorta in cantiere","descrizione":"Barre di rotaia da 12 m accatastate per la sostituzione di un tratto usurato. Accanto, gli attrezzi per scambi e traverse.","opzioni":["Armamento","Segnalamento (IS)","Trazione elettrica / SSE","Opere civili"],"corretta":"Armamento"},{"oggetto":"segnale","etichetta":"Esamina il segnale all'imbocco","titolo":"Segnale luminoso di galleria","descrizione":"Segnale luminoso a due aspetti con cassa di manovra. Comanda il distanziamento dei treni ed è collegato all'apparato centrale.","opzioni":["Armamento","Segnalamento (IS)","Trazione elettrica / SSE","Opere civili"],"corretta":"Segnalamento (IS)"},{"oggetto":"sse","etichetta":"Esamina la porta della sottostazione","titolo":"Sottostazione elettrica (SSE)","descrizione":"Porta di accesso alla sottostazione: 750 V in corrente continua per alimentare la linea di contatto. Accesso riservato al personale autorizzato.","opzioni":["Armamento","Segnalamento (IS)","Trazione elettrica / SSE","Opere civili"],"corretta":"Trazione elettrica / SSE"},{"oggetto":"fessurimetro","etichetta":"Esamina la piastrina sul piedritto","titolo":"Fessurimetro F-07","descrizione":"Piastrina di monitoraggio delle fessure nel rivestimento della galleria: si legge a ogni ispezione per verificare che le fessure non si allarghino.","opzioni":["Armamento","Segnalamento (IS)","Trazione elettrica / SSE","Opere civili"],"corretta":"Opere civili"}]},{"n":12,"id":"uomo","sotto":"1.2","titolo":"Fattore umano e operatore al centro","slot":"P3","referente":"cond","tipo":"standard","grafica":"dedicata","dedicata":"M1-12","modello":"anelli","notaPannello":"Tutto il sistema esiste perché chi guida, chi viaggia e chi lavora in linea sia protetto.","elementi":[{"titolo":"Cornice SGS","testo":"RSGS","testo2":""},{"titolo":"Regole e circolazione","testo":"DE","testo2":""},{"titolo":"Infrastruttura sicura","testo":"Resp. Infrastruttura","testo2":""},{"titolo":"Veicolo sicuro","testo":"SRM","testo2":""},{"titolo":"Operatore","testo":"Competente, idoneo e consapevole (SGC)","testo2":""}],"punti":["Limiti umani: il SGS riconosce e gestisce fatica, carico di lavoro, distrazioni.","Near miss: eventi pericolosi senza conseguenze. Segnalarli disinnesca i rischi latenti sotto la punta dell'iceberg.","Just Culture: si analizza il sistema; si tutela l'errore in buona fede, non la negligenza volontaria.","L'operatore al centro: cornice SGS (RSGS), regole e circolazione (DE), infrastruttura sicura (Resp. Infrastruttura), veicolo sicuro (SRM), operatore competente (SGC)."],"nota":"Nella slide la cornice SGS è «monitorata dal RSGS tramite ANSFISA»: più correttamente l'RSGS monitora il SGS all'interno dell'azienda, mentre ANSFISA esercita la supervisione dall'esterno. E la «totale sicurezza» va letta come rischio residuo controllato; l'obiettivo riguarda passeggeri, lavoratori e terzi, non solo chi guida.","spiegazione":["Ieri, a fine turno, un passeggero è corso verso le porte mentre si chiudevano. L'ho visto in tempo, nessuna conseguenza. Un <em>near miss</em>. L'ho segnalato, anche se non era successo niente.","Sopra l'acqua ci sono gli incidenti; sotto, molto più grande, ci sono i quasi-incidenti e i rischi latenti. La <em>Just Culture</em> mi tutela se sbaglio in buona fede, così posso raccontarlo e il sistema impara."],"labs":[{"tipo":"abbina","titolo":"Just Culture: buona fede o negligenza?","istruzioni":"Per ogni caso scegli come lo tratta la Just Culture.","opzioni":["Errore in buona fede: si tutela e si analizza il sistema","Negligenza volontaria: non è tutelata"],"voci":[{"testo":"Interpreta male un'istruzione scritta in modo ambiguo","risposta":"Errore in buona fede: si tutela e si analizza il sistema","spiegazione":""},{"testo":"Salta di proposito un controllo obbligatorio per recuperare ritardo","risposta":"Negligenza volontaria: non è tutelata","spiegazione":""},{"testo":"Sbaglia a fine turno, dopo un carico di lavoro eccessivo","risposta":"Errore in buona fede: si tutela e si analizza il sistema","spiegazione":""},{"testo":"Disattiva deliberatamente un dispositivo di sicurezza senza autorizzazione","risposta":"Negligenza volontaria: non è tutelata","spiegazione":""},{"testo":"Segnala spontaneamente un proprio errore senza conseguenze","risposta":"Errore in buona fede: si tutela e si analizza il sistema","spiegazione":""}]},{"tipo":"ordina","titolo":"Dall'esterno al centro","istruzioni":"Ordina gli anelli di protezione dal più esterno all'operatore.","opzioni":[],"voci":[{"testo":"Cornice SGS · RSGS","risposta":1,"spiegazione":""},{"testo":"Regole e circolazione · DE","risposta":2,"spiegazione":""},{"testo":"Infrastruttura sicura · Resp. Infrastruttura","risposta":3,"spiegazione":""},{"testo":"Veicolo sicuro · SRM","risposta":4,"spiegazione":""},{"testo":"Operatore competente · SGC","risposta":5,"spiegazione":""}]}],"quiz":[{"domanda":"Che cos'è un near miss?","corretta":"Un evento pericoloso che non ha avuto conseguenze","errate":["Un incidente con feriti","Un guasto programmato"],"spiegazione":"È il quasi-incidente: nessun danno, ma un segnale prezioso sui rischi latenti.","fonte":"Slide 18-19"},{"domanda":"Chi rende l'operatore «competente, idoneo e consapevole»?","corretta":"Il Sistema di Gestione delle Competenze","errate":["ANSFISA direttamente","Il capostazione"],"spiegazione":"È il centro degli anelli: selezione, formazione, certificazione, mantenimento e monitoraggio.","fonte":"Slide 18-19"}],"sopralluogo":[]}],"esame":[{"tappa":1,"domanda":"Qual è la principale differenza tra l'impostazione del DPR 753/1980 e quella del SGS?","corretta":"Il SGS si basa sulla valutazione preventiva dei rischi, non solo su prescrizioni","errate":["Il SGS elimina tutte le regole","Il DPR 753/1980 era già basato sul rischio","Non c'è alcuna differenza"],"spiegazione":"Dal modello prescrittivo si passa a quello risk-based: le regole restano, ma sono governate dai rischi.","fonte":"Slide 3"},{"tappa":1,"domanda":"Il D.L. 109/2018, detto «Decreto Genova»…","corretta":"ha istituito ANSFISA","errate":["è il nuovo codice della strada","ha abrogato ogni norma precedente","riguarda solo i viadotti autostradali"],"spiegazione":"È l'atto istitutivo dell'Agenzia Nazionale per la Sicurezza delle Ferrovie e delle Infrastrutture Stradali e Autostradali.","fonte":"Slide 3"},{"tappa":1,"domanda":"Per esercire, l'Esercente deve possedere…","corretta":"un'Autorizzazione di Sicurezza (AdS)","errate":["solo un certificato di qualità","un parere del Comune","nessun titolo specifico"],"spiegazione":"L'AdS è il titolo per operare; il suo requisito chiave è un SGS attuato ed efficace.","fonte":"Slide 3"},{"tappa":2,"domanda":"Quale di questi NON è un compito di ANSFISA indicato nel corso?","corretta":"Condurre i treni in caso di sciopero","errate":["Rilasciare certificazioni e autorizzazioni","Supervisionare gli Esercenti","Emanare circolari, note e decreti"],"spiegazione":"I compiti sono tre: certificazione/autorizzazione, supervisione, regolamentazione.","fonte":"Slide 4"},{"tappa":2,"domanda":"La supervisione di ANSFISA verifica…","corretta":"il rispetto delle norme e la coerenza con gli obiettivi di sicurezza","errate":["solo la puntualità dei treni","i bilanci aziendali","la pulizia delle stazioni"],"spiegazione":"Supervisione vuol dire verificare l'ottemperanza alle norme e la coerenza con gli obiettivi di sicurezza prefissati.","fonte":"Slide 4"},{"tappa":3,"domanda":"Organizzazione, procedure e risorse sono…","corretta":"i tre elementi su cui si regge il SGS","errate":["le tre fasi del PDCA","i tre compiti di ANSFISA","i tre sottosistemi dell'infrastruttura"],"spiegazione":"Sono le tre ruote dell'ingranaggio SGS.","fonte":"Slide 6"},{"tappa":3,"domanda":"«Personale formato, mezzi sicuri e infrastrutture adeguate» descrive…","corretta":"le risorse","errate":["le procedure","l'organizzazione","la supervisione"],"spiegazione":"Le risorse sono persone, mezzi e infrastrutture adeguati.","fonte":"Slide 6"},{"tappa":4,"domanda":"Nell'approccio proattivo, dopo un evento il focus è…","corretta":"capire perché il sistema ha fallito","errate":["trovare il colpevole","chiudere la pratica in fretta","cambiare fornitore"],"spiegazione":"La ricerca del colpevole è tipica dell'approccio reattivo; il SGS cerca le cause di sistema.","fonte":"Slide 7"},{"tappa":4,"domanda":"«Interventi solo a guasto» è tipico dell'approccio…","corretta":"reattivo","errate":["proattivo","risk-based","di miglioramento continuo"],"spiegazione":"Il SGS chiede manutenzione preventiva e costantemente monitorata.","fonte":"Slide 7"},{"tappa":5,"domanda":"Nel ciclo PDCA, la valutazione dei rischi appartiene alla fase…","corretta":"Plan","errate":["Do","Check","Act"],"spiegazione":"Pianificare significa analizzare in anticipo gli scenari di pericolo.","fonte":"Slide 8"},{"tappa":5,"domanda":"Correzione delle anomalie e aggiornamento del SGS sono la fase…","corretta":"Act","errate":["Plan","Do","Check"],"spiegazione":"Act è il miglioramento, che riapre il ciclo.","fonte":"Slide 8"},{"tappa":5,"domanda":"Monitoraggio e audit sul campo sono la fase…","corretta":"Check","errate":["Do","Act","Plan"],"spiegazione":"Check verifica l'efficacia delle misure sul campo.","fonte":"Slide 8"},{"tappa":6,"domanda":"Il principio che lega DE, RSGS, Manutenzione e RSGC è…","corretta":"responsabilità indipendenti e separate per il controllo reciproco","errate":["un'unica firma per tutte le decisioni","la rotazione annuale dei ruoli","la subordinazione di tutti all'RSGS"],"spiegazione":"Collaborano per un unico obiettivo, ma mantengono responsabilità separate.","fonte":"Slide 9-11"},{"tappa":6,"domanda":"Nell'organigramma per funzioni, la sigla MMV indica…","corretta":"Manutenzione Veicoli e Officina","errate":["Movimento Metro Veloce","Manutenzione Infrastrutture","Monitoraggio Volontario"],"spiegazione":"MMV è la manutenzione dei veicoli e l'officina della Metro.","fonte":"Slide 9-11"},{"tappa":6,"domanda":"La responsabilità ultima del sistema è…","corretta":"dell'Esercente","errate":["di ANSFISA","del singolo conducente","del fornitore dei treni"],"spiegazione":"Il vertice dello schema dei pilastri è l'Esercente, con la responsabilità ultima.","fonte":"Slide 9-11"},{"tappa":7,"domanda":"Secondo il corso, il ruolo di DE è incompatibile con quello di…","corretta":"RSGS","errate":["conducente","istruttore","capostazione"],"spiegazione":"Chi governa l'esercizio non può controllarne anche la sicurezza.","fonte":"Slide 12"},{"tappa":7,"domanda":"Chi autorizza la circolazione e le operazioni?","corretta":"Il Direttore di Esercizio","errate":["L'RSGS","Il Responsabile SGC","L'SRM"],"spiegazione":"È la prima responsabilità del DE.","fonte":"Slide 12"},{"tappa":8,"domanda":"L'RSGS deve essere…","corretta":"indipendente dalle pressioni della produzione e della circolazione","errate":["il responsabile della produzione","il capo dei conducenti","un funzionario di ANSFISA"],"spiegazione":"L'indipendenza è la condizione per un controllo credibile.","fonte":"Slide 13"},{"tappa":8,"domanda":"Chi gestisce la valutazione dei rischi e conduce gli audit?","corretta":"L'RSGS","errate":["Il DE","L'SRM","Il fornitore"],"spiegazione":"Sono responsabilità chiave del Responsabile del SGS.","fonte":"Slide 13"},{"tappa":9,"domanda":"L'ordine corretto del ciclo di vita delle competenze è…","corretta":"selezione, formazione iniziale, certificazione, mantenimento, monitoraggio","errate":["certificazione, selezione, monitoraggio, formazione","formazione, selezione, esame, fine","monitoraggio, selezione, certificazione, formazione"],"spiegazione":"È il «lifecycle journey» della slide: dalla selezione al monitoraggio costante.","fonte":"Slide 14-15"},{"tappa":9,"domanda":"Chi nomina le commissioni d'esame?","corretta":"Il Responsabile SGC","errate":["Il DE","L'RSGS","ANSFISA"],"spiegazione":"È uno dei tre compiti del Responsabile SGC indicati nel corso.","fonte":"Slide 14-15"},{"tappa":9,"domanda":"La verifica costante dell'idoneità fisica e psicologica è la fase di…","corretta":"monitoraggio","errate":["selezione","formazione iniziale","certificazione"],"spiegazione":"Il monitoraggio accompagna tutta la vita professionale.","fonte":"Slide 14-15"},{"tappa":10,"domanda":"La funzione SRM che crea e aggiorna i Piani di manutenzione è…","corretta":"lo sviluppo","errate":["la gestione flotta","l'esecuzione","la gestione"],"spiegazione":"Sviluppo: creazione e aggiornamento dei piani.","fonte":"Slide 16"},{"tappa":10,"domanda":"Ritiro e riammissione in servizio dei veicoli spettano alla funzione…","corretta":"gestione flotta","errate":["sviluppo","esecuzione","gestione"],"spiegazione":"La gestione della flotta decide quali veicoli escono e rientrano.","fonte":"Slide 16"},{"tappa":11,"domanda":"Rotaie, scambi e sede ferroviaria sono il sottosistema…","corretta":"armamento","errate":["segnalamento","opere civili","trazione elettrica"],"spiegazione":"L'armamento è la via di corsa.","fonte":"Slide 17"},{"tappa":11,"domanda":"Linea di contatto e sottostazioni sono il sottosistema…","corretta":"trazione elettrica / SSE","errate":["armamento","segnalamento","opere civili"],"spiegazione":"Alimentano i treni: è la trazione elettrica.","fonte":"Slide 17"},{"tappa":11,"domanda":"Gallerie, stazioni e viadotti rientrano nelle…","corretta":"opere civili","errate":["attività di armamento","funzioni di trazione elettrica","funzioni di segnalamento"],"spiegazione":"Sono le strutture che ospitano la linea.","fonte":"Slide 17"},{"tappa":12,"domanda":"La Just Culture…","corretta":"tutela l'errore in buona fede e non tollera la negligenza volontaria","errate":["punisce ogni errore","non punisce mai nulla","riguarda solo i dirigenti"],"spiegazione":"Distingue l'errore onesto, da analizzare, dalla violazione consapevole.","fonte":"Slide 18-19"},{"tappa":12,"domanda":"Perché è importante segnalare i near miss?","corretta":"Per individuare i rischi latenti prima che diventino incidenti","errate":["Per trovare un colpevole","Per migliorare le statistiche","Non è importante"],"spiegazione":"Sono la parte sommersa dell'iceberg: vederli permette di intervenire prima.","fonte":"Slide 18-19"},{"tappa":12,"domanda":"Fatica, carico di lavoro e distrazioni sono…","corretta":"limiti umani che il SGS riconosce e gestisce","errate":["colpe individuali da sanzionare","temi estranei alla sicurezza","problemi solo dei passeggeri"],"spiegazione":"Il fattore umano si gestisce con organizzazione, procedure e risorse adeguate.","fonte":"Slide 18-19"},{"tappa":12,"domanda":"Nel modello «operatore al centro», il veicolo sicuro è garantito…","corretta":"dall'SRM","errate":["dal DE","dall'RSGS","da ANSFISA"],"spiegazione":"L'anello «veicolo sicuro» è dell'SRM.","fonte":"Slide 18-19"},{"tappa":12,"domanda":"Chi controlla il SGS, e come?","corretta":"L'RSGS lo monitora all'interno, ANSFISA lo supervisiona dall'esterno","errate":["ANSFISA gestisce direttamente il SGS dell'azienda","L'RSGS è un dipendente di ANSFISA","Nessuno, una volta ottenuta l'AdS"],"spiegazione":"Due livelli distinti: controllo interno dell'Esercente e supervisione esterna dell'Agenzia.","fonte":"Slide 18-19"}],"sigle":[{"sigla":"AdS","significato":"Autorizzazione di Sicurezza: titolo con cui l'Esercente è autorizzato a esercire."},{"sigla":"ANSFISA","significato":"Agenzia Nazionale per la Sicurezza delle Ferrovie e delle Infrastrutture Stradali e Autostradali."},{"sigla":"SGS","significato":"Sistema di Gestione della Sicurezza."},{"sigla":"SGC","significato":"Sistema di Gestione delle Competenze."},{"sigla":"DE","significato":"Direttore di Esercizio."},{"sigla":"RSGS","significato":"Responsabile del Sistema di Gestione della Sicurezza."},{"sigla":"RSGC","significato":"Responsabile del Sistema di Gestione delle Competenze."},{"sigla":"SRM","significato":"Soggetto Responsabile della Manutenzione (veicoli)."},{"sigla":"PDCA","significato":"Plan, Do, Check, Act: ciclo di miglioramento continuo."},{"sigla":"Near miss","significato":"Quasi-incidente: evento pericoloso senza conseguenze."},{"sigla":"Just Culture","significato":"Cultura giusta: tutela l'errore in buona fede, non la negligenza volontaria."},{"sigla":"IS","significato":"Impianti di segnalamento."},{"sigla":"SSE","significato":"Sottostazione elettrica."},{"sigla":"TGV","significato":"Trasporti a guida vincolata: perimetro del SGS (metro, cremagliera, filovia in definizione)."},{"sigla":"FER","significato":"Servizio su Ferro."},{"sigla":"SGA","significato":"Funzione Sistema di Gestione della Sicurezza."},{"sigla":"SGM","significato":"Funzione Sistema di Gestione delle Competenze."},{"sigla":"MET","significato":"Esercizio e Manutenzione Metro."},{"sigla":"DCT","significato":"Esercizio MET (sigla dell'organigramma per funzioni)."},{"sigla":"MMI","significato":"Manutenzione Infrastrutture Metro."},{"sigla":"MMC","significato":"Manutenzione Segnalamento e Impianti Ausiliari."},{"sigla":"MMV","significato":"Manutenzione Veicoli e Officina."},{"sigla":"TEM","significato":"Ufficio Tecnico."},{"sigla":"IMS","significato":"Impianti Verticali."},{"sigla":"FGC","significato":"Ferrovia Genova Casella: fuori dal perimetro SGS TGV del corso."}]};
+/* Posizioni dei totem (12) con il punto in cui si ferma il referente */
+const SLOTS = {
+  A1:{ pos:[5.6, 4.5, 11.3], ry:Math.PI, host:[7.1, 9.4], area:'Atrio' }, A2:{ pos:[9.6, 4.5, 11.3], ry:Math.PI, host:[11.1, 9.4], area:'Atrio' }, A3:{ pos:[13.6, 4.5, 11.3], ry:Math.PI, host:[15.0, 9.6], area:'Atrio' },
+  A4:{ pos:[14.4, 4.5, 16.8], ry:Math.PI / 2, host:[16.8, 18.6], area:'Atrio' }, A5:{ pos:[14.4, 4.5, 20.9], ry:Math.PI / 2, host:[16.6, 22.0], area:'Atrio' },
+  W1:{ pos:[3.9, 6.25, 16.03], ry:0, wall:true, host:[5.8, 18.6], area:'Aula' }, W2:{ pos:[10.0, 6.25, 16.03], ry:0, wall:true, host:[8.6, 18.2], area:'Aula' },
+  P1:{ pos:[50, 0, 9.7], ry:0, host:[51.8, 11.4], area:'Banchina' }, P2:{ pos:[60, 0, 9.7], ry:0, host:[61.8, 11.4], area:'Banchina' }, P3:{ pos:[72, 0, 9.7], ry:0, host:[73.8, 11.6], area:'Banchina' },
+  P4:{ pos:[86, 0, 9.7], ry:0, host:[87.8, 11.4], area:'Banchina' }, P5:{ pos:[92.5, 0, 9.7], ry:0, host:[95.3, 10.2], area:'Banchina', gate:true }
+};
+const EXAM_SPOT = [8.8, 21.4], SPARE_SPOTS = [[11.5, 7.2], [19.4, 8.6], [4.6, 6.2], [45.5, 12.5]];
+/* Oggetti della stazione utilizzabili nei sopralluoghi */
+const HUNT_CATALOG = {
+  rotaie:{ pos:[80, -0.5, 4.3], mark:0.45, cantiere:true, where:'cantiere' }, segnale:{ pos:[99.4, 0.2, 4.1], mark:1.75, cantiere:true, where:'imbocco della galleria' },
+  sse:{ pos:[112.5, -0.1, 7.3], mark:0.85, cantiere:true, where:'galleria' }, fessurimetro:{ pos:[116, -0.2, 3.7], mark:0.75, cantiere:true, where:'galleria' },
+  estintore:{ pos:[52.5, 0.4, 13.3], mark:1.7, where:'banchina' }, dae:{ pos:[2.9, 5.3, 13.9], mark:6.4, where:'atrio' }, sos:{ pos:[70.5, 0.4, 16.6], mark:1.95, where:'banchina' },
+  tornelli:{ pos:[21.4, 5.0, 5.5], mark:5.9, where:'atrio' }, lineagialla:{ pos:[66, 0.1, 18.3], mark:0.9, where:'banchina' }, display:{ pos:[62, 0.4, 16.4], mark:2.9, where:'banchina' }
+};
+const DIVISE = { 'polo blu':['polo', 'trousers', 'short'], 'camicia bianca':['white', 'grey', 'long'], 'completo scuro':['suit', 'suit', 'long'], 'giacca grigia':['grey', 'trousers', 'long'],
+  'maglia verde petrolio':['teal', 'trousers', 'long'], 'maglia bordeaux':['burgundy', 'trousers', 'long'], 'divisa condotta':['driver', 'driver', 'long'], 'divisa stazione':['station', 'trousers', 'long'],
+  'lavoro arancio':['itr', 'trousers', 'long'], 'alta visibilità':['worker', 'trousers', 'long'] };
+const CAPELLI = { corti:'short', rasati:'buzz', ricci:'curly', lunghi:'long', caschetto:'bob', chignon:'bun', coda:'ponytail', calvo:'bald' };
+const COL_CAPELLI = { nero:0, castano:1, biondo:2, grigio:3, rosso:4 };
+const COLORI = { 'verde acqua':'#3fd2c7', verde:'#4fdc8a', blu:'#5aa8ff', azzurro:'#7cc8f0', arancio:'#ff8a3a', ambra:'#ffb020', viola:'#b58cff', grigio:'#95a2b3', rosso:'#ff6a5a' };
+const POSE = { 'in piedi':'stand', legge:'read', telefono:'phone' };
+const MODELLI = ['sequenza', 'colonne', 'ciclo', 'confronto', 'elenco', 'anelli', 'scheda'];
+const LAB_T = { ordina:'order', abbina:'match', scelta:'multi' };
+let PACK = null, MOD = null, TAPPE = [], EXAM = [], GLOSS = [], HOSTS = {};
 const tpById = id => TAPPE.find(t => t.id === id);
-/* Banca d'esame: la prima risposta è quella corretta, l'ordine viene mescolato a video */
-const EXAM = [
-  { tp:1, q:'Qual è la principale differenza tra l\'impostazione del DPR 753/1980 e quella del SGS?', a:['Il SGS si basa sulla valutazione preventiva dei rischi, non solo su prescrizioni', 'Il SGS elimina tutte le regole', 'Il DPR 753/1980 era già basato sul rischio', 'Non c\'è alcuna differenza'], why:'Dal modello prescrittivo si passa a quello risk-based: le regole restano, ma sono governate dai rischi.' },
-  { tp:1, q:'Il D.L. 109/2018, detto «Decreto Genova»…', a:['ha istituito ANSFISA', 'è il nuovo codice della strada', 'ha abrogato ogni norma precedente', 'riguarda solo i viadotti autostradali'], why:'È l\'atto istitutivo dell\'Agenzia Nazionale per la Sicurezza delle Ferrovie e delle Infrastrutture Stradali e Autostradali.' },
-  { tp:1, q:'Per esercire, l\'Esercente deve possedere…', a:['un\'Autorizzazione di Sicurezza (AdS)', 'solo un certificato di qualità', 'un parere del Comune', 'nessun titolo specifico'], why:'L\'AdS è il titolo per operare; il suo requisito chiave è un SGS attuato ed efficace.' },
-  { tp:2, q:'Quale di questi NON è un compito di ANSFISA indicato nel corso?', a:['Condurre i treni in caso di sciopero', 'Rilasciare certificazioni e autorizzazioni', 'Supervisionare gli Esercenti', 'Emanare circolari, note e decreti'], why:'I compiti sono tre: certificazione/autorizzazione, supervisione, regolamentazione.' },
-  { tp:2, q:'La supervisione di ANSFISA verifica…', a:['il rispetto delle norme e la coerenza con gli obiettivi di sicurezza', 'solo la puntualità dei treni', 'i bilanci aziendali', 'la pulizia delle stazioni'], why:'Supervisione vuol dire verificare l\'ottemperanza alle norme e la coerenza con gli obiettivi di sicurezza prefissati.' },
-  { tp:3, q:'Organizzazione, procedure e risorse sono…', a:['i tre elementi su cui si regge il SGS', 'le tre fasi del PDCA', 'i tre compiti di ANSFISA', 'i tre sottosistemi dell\'infrastruttura'], why:'Sono le tre ruote dell\'ingranaggio SGS.' },
-  { tp:3, q:'«Personale formato, mezzi sicuri e infrastrutture adeguate» descrive…', a:['le risorse', 'le procedure', 'l\'organizzazione', 'la supervisione'], why:'Le risorse sono persone, mezzi e infrastrutture adeguati.' },
-  { tp:4, q:'Nell\'approccio proattivo, dopo un evento il focus è…', a:['capire perché il sistema ha fallito', 'trovare il colpevole', 'chiudere la pratica in fretta', 'cambiare fornitore'], why:'La ricerca del colpevole è tipica dell\'approccio reattivo; il SGS cerca le cause di sistema.' },
-  { tp:4, q:'«Interventi solo a guasto» è tipico dell\'approccio…', a:['reattivo', 'proattivo', 'risk-based', 'di miglioramento continuo'], why:'Il SGS chiede manutenzione preventiva e costantemente monitorata.' },
-  { tp:5, q:'Nel ciclo PDCA, la valutazione dei rischi appartiene alla fase…', a:['Plan', 'Do', 'Check', 'Act'], why:'Pianificare significa analizzare in anticipo gli scenari di pericolo.' },
-  { tp:5, q:'Correzione delle anomalie e aggiornamento del SGS sono la fase…', a:['Act', 'Plan', 'Do', 'Check'], why:'Act è il miglioramento, che riapre il ciclo.' },
-  { tp:5, q:'Monitoraggio e audit sul campo sono la fase…', a:['Check', 'Do', 'Act', 'Plan'], why:'Check verifica l\'efficacia delle misure sul campo.' },
-  { tp:6, q:'Il principio che lega DE, RSGS, Manutenzione e RSGC è…', a:['responsabilità indipendenti e separate per il controllo reciproco', 'un\'unica firma per tutte le decisioni', 'la rotazione annuale dei ruoli', 'la subordinazione di tutti all\'RSGS'], why:'Collaborano per un unico obiettivo, ma mantengono responsabilità separate.' },
-  { tp:6, q:'Nell\'organigramma per funzioni, la sigla MMV indica…', a:['Manutenzione Veicoli e Officina', 'Movimento Metro Veloce', 'Manutenzione Infrastrutture', 'Monitoraggio Volontario'], why:'MMV è la manutenzione dei veicoli e l\'officina della Metro.' },
-  { tp:6, q:'La responsabilità ultima del sistema è…', a:['dell\'Esercente', 'di ANSFISA', 'del singolo conducente', 'del fornitore dei treni'], why:'Il vertice dello schema dei pilastri è l\'Esercente, con la responsabilità ultima.' },
-  { tp:7, q:'Secondo il corso, il ruolo di DE è incompatibile con quello di…', a:['RSGS', 'conducente', 'istruttore', 'capostazione'], why:'Chi governa l\'esercizio non può controllarne anche la sicurezza.' },
-  { tp:7, q:'Chi autorizza la circolazione e le operazioni?', a:['Il Direttore di Esercizio', 'L\'RSGS', 'Il Responsabile SGC', 'L\'SRM'], why:'È la prima responsabilità del DE.' },
-  { tp:8, q:'L\'RSGS deve essere…', a:['indipendente dalle pressioni della produzione e della circolazione', 'il responsabile della produzione', 'il capo dei conducenti', 'un funzionario di ANSFISA'], why:'L\'indipendenza è la condizione per un controllo credibile.' },
-  { tp:8, q:'Chi gestisce la valutazione dei rischi e conduce gli audit?', a:['L\'RSGS', 'Il DE', 'L\'SRM', 'Il fornitore'], why:'Sono responsabilità chiave del Responsabile del SGS.' },
-  { tp:9, q:'L\'ordine corretto del ciclo di vita delle competenze è…', a:['selezione, formazione iniziale, certificazione, mantenimento, monitoraggio', 'certificazione, selezione, monitoraggio, formazione', 'formazione, selezione, esame, fine', 'monitoraggio, selezione, certificazione, formazione'], why:'È il «lifecycle journey» della slide: dalla selezione al monitoraggio costante.' },
-  { tp:9, q:'Chi nomina le commissioni d\'esame?', a:['Il Responsabile SGC', 'Il DE', 'L\'RSGS', 'ANSFISA'], why:'È uno dei tre compiti del Responsabile SGC indicati nel corso.' },
-  { tp:9, q:'La verifica costante dell\'idoneità fisica e psicologica è la fase di…', a:['monitoraggio', 'selezione', 'formazione iniziale', 'certificazione'], why:'Il monitoraggio accompagna tutta la vita professionale.' },
-  { tp:10, q:'La funzione SRM che crea e aggiorna i Piani di manutenzione è…', a:['lo sviluppo', 'la gestione flotta', 'l\'esecuzione', 'la gestione'], why:'Sviluppo: creazione e aggiornamento dei piani.' },
-  { tp:10, q:'Ritiro e riammissione in servizio dei veicoli spettano alla funzione…', a:['gestione flotta', 'sviluppo', 'esecuzione', 'gestione'], why:'La gestione della flotta decide quali veicoli escono e rientrano.' },
-  { tp:11, q:'Rotaie, scambi e sede ferroviaria sono il sottosistema…', a:['armamento', 'segnalamento', 'opere civili', 'trazione elettrica'], why:'L\'armamento è la via di corsa.' },
-  { tp:11, q:'Linea di contatto e sottostazioni sono il sottosistema…', a:['trazione elettrica / SSE', 'armamento', 'segnalamento', 'opere civili'], why:'Alimentano i treni: è la trazione elettrica.' },
-  { tp:11, q:'Gallerie, stazioni e viadotti rientrano nelle…', a:['opere civili', 'attività di armamento', 'funzioni di trazione elettrica', 'funzioni di segnalamento'], why:'Sono le strutture che ospitano la linea.' },
-  { tp:12, q:'La Just Culture…', a:['tutela l\'errore in buona fede e non tollera la negligenza volontaria', 'punisce ogni errore', 'non punisce mai nulla', 'riguarda solo i dirigenti'], why:'Distingue l\'errore onesto, da analizzare, dalla violazione consapevole.' },
-  { tp:12, q:'Perché è importante segnalare i near miss?', a:['Per individuare i rischi latenti prima che diventino incidenti', 'Per trovare un colpevole', 'Per migliorare le statistiche', 'Non è importante'], why:'Sono la parte sommersa dell\'iceberg: vederli permette di intervenire prima.' },
-  { tp:12, q:'Fatica, carico di lavoro e distrazioni sono…', a:['limiti umani che il SGS riconosce e gestisce', 'colpe individuali da sanzionare', 'temi estranei alla sicurezza', 'problemi solo dei passeggeri'], why:'Il fattore umano si gestisce con organizzazione, procedure e risorse adeguate.' },
-  { tp:12, q:'Nel modello «operatore al centro», il veicolo sicuro è garantito…', a:['dall\'SRM', 'dal DE', 'dall\'RSGS', 'da ANSFISA'], why:'L\'anello «veicolo sicuro» è dell\'SRM.' },
-  { tp:12, q:'Chi controlla il SGS, e come?', a:['L\'RSGS lo monitora all\'interno, ANSFISA lo supervisiona dall\'esterno', 'ANSFISA gestisce direttamente il SGS dell\'azienda', 'L\'RSGS è un dipendente di ANSFISA', 'Nessuno, una volta ottenuta l\'AdS'], why:'Due livelli distinti: controllo interno dell\'Esercente e supervisione esterna dell\'Agenzia.' }
-];
-/* Sigle e termini per il libretto */
-const GLOSS = [['AdS', 'Autorizzazione di Sicurezza: titolo con cui l\'Esercente è autorizzato a esercire.'], ['ANSFISA', 'Agenzia Nazionale per la Sicurezza delle Ferrovie e delle Infrastrutture Stradali e Autostradali.'], ['SGS', 'Sistema di Gestione della Sicurezza.'],
-  ['SGC', 'Sistema di Gestione delle Competenze.'], ['DE', 'Direttore di Esercizio.'], ['RSGS', 'Responsabile del Sistema di Gestione della Sicurezza.'], ['RSGC', 'Responsabile del Sistema di Gestione delle Competenze.'], ['SRM', 'Soggetto Responsabile della Manutenzione (veicoli).'],
-  ['PDCA', 'Plan, Do, Check, Act: ciclo di miglioramento continuo.'], ['Near miss', 'Quasi-incidente: evento pericoloso senza conseguenze.'], ['Just Culture', 'Cultura giusta: tutela l\'errore in buona fede, non la negligenza volontaria.'], ['IS', 'Impianti di segnalamento.'], ['SSE', 'Sottostazione elettrica.'],
-  ['TGV', 'Trasporti a guida vincolata: perimetro del SGS (metro, cremagliera, filovia in definizione).'], ['FER', 'Servizio su Ferro.'], ['SGA', 'Funzione Sistema di Gestione della Sicurezza.'], ['SGM', 'Funzione Sistema di Gestione delle Competenze.'], ['MET', 'Esercizio e Manutenzione Metro.'],
-  ['DCT', 'Esercizio MET (sigla dell\'organigramma per funzioni).'], ['MMI', 'Manutenzione Infrastrutture Metro.'], ['MMC', 'Manutenzione Segnalamento e Impianti Ausiliari.'], ['MMV', 'Manutenzione Veicoli e Officina.'], ['TEM', 'Ufficio Tecnico.'], ['IMS', 'Impianti Verticali.'], ['FGC', 'Ferrovia Genova Casella: fuori dal perimetro SGS TGV del corso.']];
+const norm = s => String(s == null ? '' : s).trim();
+const low = s => norm(s).toLowerCase();
+const yes = s => ['sì', 'si', 'yes', 'vero', 'true', 'x', '1'].includes(low(s));
+/* Dove si trova una tappa, in parole */
+function whereOf(t) {
+  const s = SLOTS[t.slot]; if (!s) return '';
+  let w = s.wall ? `${s.area} · parete` : `${s.area} · totem ${t.n}`; if (s.gate) w += ', al cancello';
+  if (t.hunt && t.hunt.some(h => HUNT_CATALOG[h.id].cantiere)) w += ', poi cantiere e galleria';
+  return w;
+}
+/* Validazione: errori bloccanti e avvisi, con riferimento a foglio e riga quando il pacchetto viene da Excel */
+function validatePack(p) {
+  const E = [], Wn = [], at = o => o && o._src ? ` (foglio ${o._src.sheet}, riga ${o._src.row})` : '';
+  const err = (m, o) => E.push(m + at(o)), warn = (m, o) => Wn.push(m + at(o));
+  if (!p || typeof p !== 'object') { err('Il file non contiene un pacchetto SGS Learning.'); return { errors:E, warnings:Wn }; }
+  const M = p.modulo || {};
+  if (!norm(M.id)) err('Modulo: manca l\'ID del modulo.', M); if (!norm(M.titolo)) err('Modulo: manca il titolo.', M);
+  const R = p.referenti || [], ids = new Set(R.map(r => norm(r.id)));
+  if (!R.length) err('Referenti: nessun referente definito.');
+  R.forEach(r => { if (!norm(r.id)) err('Referenti: riga senza ID.', r); if (!norm(r.ruolo)) err(`Referente ${r.id}: manca il ruolo.`, r);
+    if (r.divisa && !DIVISE[low(r.divisa)]) warn(`Referente ${r.id}: divisa «${r.divisa}» non prevista, uso «polo blu».`, r);
+    if (r.capelli && !(low(r.capelli) in CAPELLI)) warn(`Referente ${r.id}: capelli «${r.capelli}» non previsti.`, r);
+    if (norm(r.sigla).length > 4) warn(`Referente ${r.id}: la sigla «${r.sigla}» supera 4 caratteri e verrà accorciata.`, r); });
+  if (R.filter(r => r.id).length !== ids.size) err('Referenti: ci sono ID ripetuti.');
+  if (!ids.has(norm(M.guida))) err(`Modulo: il referente guida «${M.guida || ''}» non è nel foglio Referenti.`, M);
+  if (!ids.has(norm(M.esaminatore))) err(`Modulo: l'esaminatore «${M.esaminatore || ''}» non è nel foglio Referenti.`, M);
+  const T = p.tappe || [];
+  if (!T.length) err('Tappe: nessuna tappa definita.'); if (T.length > 12) err(`Tappe: sono ${T.length}, il massimo è 12 (una per posizione).`);
+  const ns = T.map(t => +t.n).sort((a, b) => a - b); if (ns.some((n, i) => n !== i + 1)) err('Tappe: i numeri devono essere 1, 2, 3… senza salti né ripetizioni.');
+  const slots = new Set(), objs = new Set();
+  for (const t of T) {
+    const k = `Tappa ${t.n}`;
+    if (!norm(t.titolo)) err(`${k}: manca il titolo.`, t);
+    if (!SLOTS[norm(t.slot).toUpperCase()]) err(`${k}: posizione «${t.slot || ''}» non valida (A1–A5, W1–W2, P1–P5).`, t);
+    else if (slots.has(norm(t.slot).toUpperCase())) err(`${k}: la posizione ${t.slot} è già usata da un'altra tappa.`, t); else slots.add(norm(t.slot).toUpperCase());
+    if (!ids.has(norm(t.referente))) err(`${k}: il referente «${t.referente || ''}» non è nel foglio Referenti.`, t);
+    if (!['standard', 'sopralluogo'].includes(low(t.tipo) || 'standard')) err(`${k}: tipo «${t.tipo}» non valido (standard o sopralluogo).`, t);
+    const g = low(t.grafica) || 'modello';
+    if (g === 'dedicata' && !DEDICATED[norm(t.dedicata).toUpperCase()]) err(`${k}: grafica dedicata «${t.dedicata || ''}» inesistente (M1-01…M1-12).`, t);
+    if (g !== 'dedicata') { if (!MODELLI.includes(low(t.modello))) err(`${k}: modello di pannello «${t.modello || ''}» non valido.`, t); else if ((t.elementi || []).length < 2) err(`${k}: il pannello «${t.modello}» ha bisogno di almeno 2 righe nel foglio Pannelli.`, t);
+      else if ((t.elementi || []).length > 6) warn(`${k}: il pannello mostra al massimo 6 righe, le altre non compaiono.`, t); }
+    if (!(t.punti || []).length) warn(`${k}: nessun punto chiave nel foglio Punti.`, t);
+    if (!(t.spiegazione || []).filter(norm).length) warn(`${k}: il referente non ha battute di spiegazione.`, t);
+    if (!(t.quiz || []).length) err(`${k}: serve almeno un quiz.`, t);
+    (t.quiz || []).forEach(q => { if (!norm(q.domanda) || !norm(q.corretta)) err(`${k}: quiz senza domanda o senza risposta corretta.`, q); if (!(q.errate || []).filter(norm).length) err(`${k}: il quiz «${norm(q.domanda).slice(0, 40)}…» non ha risposte errate.`, q); });
+    if ((t.labs || []).length > 3) warn(`${k}: più di 3 laboratori, verranno proposti tutti.`, t);
+    (t.labs || []).forEach((L, i) => {
+      const lk = `${k}, laboratorio ${i + 1}`, tipo = low(L.tipo), V = L.voci || [];
+      if (!LAB_T[tipo]) { err(`${lk}: tipo «${L.tipo || ''}» non valido (ordina, abbina, scelta).`, L); return; }
+      if (V.length < 2) err(`${lk}: servono almeno 2 voci nel foglio Voci.`, L);
+      if (tipo === 'ordina') { const pos = V.map(v => +v.risposta).sort((a, b) => a - b); if (pos.some((x, j) => x !== j + 1)) err(`${lk}: le posizioni in «Risposta» devono essere 1, 2, 3… senza salti.`, L); }
+      if (tipo === 'abbina') { const O = (L.opzioni || []).map(norm).filter(Boolean); if (O.length < 2) err(`${lk}: servono almeno 2 opzioni separate da «|».`, L);
+        V.forEach(v => { if (!O.includes(norm(v.risposta))) err(`${lk}: la risposta «${v.risposta}» non è tra le opzioni.`, v); }); }
+      if (tipo === 'scelta') { V.forEach(v => { if (!['sì', 'si', 'no'].includes(low(v.risposta))) err(`${lk}: la risposta deve essere Sì oppure No.`, v); }); if (!V.some(v => yes(v.risposta))) err(`${lk}: almeno una voce deve essere corretta (Sì).`, L); }
+    });
+    if (low(t.tipo) === 'sopralluogo') {
+      const H = t.sopralluogo || []; if (!H.length || H.length > 6) err(`${k}: un sopralluogo richiede da 1 a 6 oggetti.`, t);
+      H.forEach(h => { const o = low(h.oggetto); if (!HUNT_CATALOG[o]) err(`${k}: oggetto «${h.oggetto || ''}» non presente nel catalogo.`, h); else if (objs.has(o)) err(`${k}: l'oggetto «${o}» è già usato in un'altra tappa.`, h); else objs.add(o);
+        const O = (h.opzioni || []).map(norm).filter(Boolean); if (O.length < 2) err(`${k}: l'oggetto «${h.oggetto}» ha bisogno di almeno 2 opzioni.`, h); else if (!O.includes(norm(h.corretta))) err(`${k}: la risposta corretta per «${h.oggetto}» non è tra le opzioni.`, h); });
+    }
+  }
+  const X = p.esame || [], nq = +M.domande || 10, soglia = +M.soglia || 7;
+  if (X.length < nq) err(`Esame: servono almeno ${nq} domande, ce ne sono ${X.length}.`);
+  if (soglia > nq || soglia < 1) err(`Modulo: la soglia (${soglia}) deve essere tra 1 e il numero di domande (${nq}).`, M);
+  X.forEach(e => { if (!ns.includes(+e.tappa)) err(`Esame: la domanda «${norm(e.domanda).slice(0, 40)}…» indica una tappa inesistente (${e.tappa}).`, e);
+    if (!norm(e.corretta) || !(e.errate || []).filter(norm).length) err(`Esame: domanda «${norm(e.domanda).slice(0, 40)}…» incompleta.`, e); });
+  const bad = p._revisione || 0; if (bad) warn(`Revisione: ${bad} righe sono ancora «Da correggere».`);
+  if (low(M.stato) !== 'approvato') warn('Il modulo è in stato Bozza: il gioco lo segnala come contenuto non approvato.');
+  return { errors:E, warnings:Wn };
+}
+/* Dal pacchetto alle strutture del motore */
+function compilePack(p) {
+  const M = p.modulo, subs = (M.sottomoduli || []).filter(s => norm(s.codice));
+  MOD = { id:norm(M.id), titolo:norm(M.titolo), nome:norm(M.nome), breve:norm(M.breve) || norm(M.nome), corso:norm(M.corso), subs, rev:norm(M.revisione), data:norm(M.data),
+    stato:low(M.stato) === 'approvato' ? 'Approvato' : 'Bozza', approvatoDa:norm(M.approvatoDa), fonti:norm(M.fonti), guida:norm(M.guida), esam:norm(M.esaminatore),
+    domande:+M.domande || 10, soglia:+M.soglia || 7, allievo:norm(M.allievo) || 'Allievo', presentazione:norm(M.presentazione), apertura:norm(M.apertura), guidaSpiegazione:(M.guidaSpiegazione || []).map(norm).filter(Boolean) };
+  TAPPE = p.tappe.slice().sort((a, b) => a.n - b.n).map(t => {
+    const slot = norm(t.slot).toUpperCase(), S = SLOTS[slot], labs = (t.labs || []).map(L => {
+      const type = LAB_T[low(L.tipo)], V = L.voci || [], o = { type, title:norm(L.titolo), instr:norm(L.istruzioni) };
+      if (type === 'order') o.items = V.slice().sort((a, b) => a.risposta - b.risposta).map(v => norm(v.testo));
+      else if (type === 'match') { o.options = (L.opzioni || []).map(norm).filter(Boolean); o.rows = V.map(v => [norm(v.testo), o.options.indexOf(norm(v.risposta))]); }
+      else o.items = V.map(v => [norm(v.testo), yes(v.risposta), norm(v.spiegazione)]);
+      return o; });
+    const tp = { n:+t.n, sub:norm(t.sotto), id:norm(t.id) || 't' + t.n, title:norm(t.titolo), host:norm(t.referente), slot, board:{ pos:S.pos, ry:S.ry, wall:!!S.wall },
+      grafica:low(t.grafica) === 'dedicata' ? 'dedicata' : 'modello', dedicata:norm(t.dedicata).toUpperCase(), modello:low(t.modello), notaPannello:norm(t.notaPannello),
+      elementi:(t.elementi || []).map(e => ({ titolo:norm(e.titolo), testo:norm(e.testo), testo2:norm(e.testo2) })),
+      points:(t.punti || []).map(norm).filter(Boolean), crit:norm(t.nota) || null, intro:(t.spiegazione || []).map(norm).filter(Boolean), labs,
+      quiz:(t.quiz || []).map(q => [norm(q.domanda), [norm(q.corretta), ...(q.errate || []).map(norm).filter(Boolean)], norm(q.spiegazione)]) };
+    if (low(t.tipo) === 'sopralluogo') tp.hunt = (t.sopralluogo || []).map(h => { const id = low(h.oggetto), C = HUNT_CATALOG[id], opts = (h.opzioni || []).map(norm).filter(Boolean);
+      return { id, pos:C.pos, mark:C.mark, label:norm(h.etichetta) || `Esamina: ${norm(h.titolo)}`, title:norm(h.titolo), code:C.where[0].toUpperCase() + C.where.slice(1), desc:norm(h.descrizione), opts, ans:opts.indexOf(norm(h.corretta)) }; });
+    if (!tp.intro.length) tp.intro = [`Questa è la tappa ${tp.n}: ${tp.title}.`];
+    tp.where = ''; return tp;
+  });
+  TAPPE.forEach(t => { t.where = whereOf(t); });
+  EXAM = (p.esame || []).map(e => ({ tp:+e.tappa, q:norm(e.domanda), a:[norm(e.corretta), ...(e.errate || []).map(norm).filter(Boolean)].slice(0, 4), why:norm(e.spiegazione) }));
+  GLOSS = (p.sigle || []).map(g => [norm(g.sigla), norm(g.significato)]).filter(g => g[0]);
+  HOSTS = {}; let spare = 0;
+  for (const r of p.referenti) {
+    const id = norm(r.id), first = TAPPE.find(t => t.host === id), D = DIVISE[low(r.divisa)] || DIVISE['polo blu'];
+    const pos = id === MOD.esam ? EXAM_SPOT : first ? SLOTS[first.slot].host : SPARE_SPOTS[spare++ % SPARE_SPOTS.length];
+    const toward = first ? SLOTS[first.slot].pos : [pos[0], 0, pos[1] - 1];
+    HOSTS[id] = { who:norm(r.ruolo), org:norm(r.struttura), pos, yaw:Math.atan2(toward[0] - pos[0], toward[2] - pos[1]) + (first && !SLOTS[first.slot].wall ? Math.PI : 0),
+      idle:POSE[low(r.posa)] || 'stand', saluto:norm(r.saluto), extraQ:norm(r.domandaExtra), extraA:norm(r.rispostaExtra),
+      look:() => ({ top:APPEAR.uni[D[0]], bottom:APPEAR.uni[D[1]], sleeves:D[2], female:low(r.figura) === 'f', hairStyle:CAPELLI[low(r.capelli)] || 'short', noHair:low(r.capelli) === 'calvo',
+        hairM:APPEAR.hair[COL_CAPELLI[low(r.coloreCapelli)] ?? 1], skin:APPEAR.skins[clamp((+r.carnagione || 3) - 1, 0, 5)], helmet:yes(r.casco) ? APPEAR.helmY : null }) };
+    BADGES[id] = { c:COLORI[low(r.colore)] || '#3fd2c7', t:norm(r.sigla).slice(0, 4) || id.slice(0, 3).toUpperCase(), s:(norm(r.struttura).split('·')[0] || norm(r.ruolo)).trim().toUpperCase().slice(0, 14) };
+  }
+  ME = W('Tu', MOD.allievo, 'me');
+}
 
 /* =========================================================================
    PERCORSO: pannelli, laboratori, tappe, referenti, libretto, esame, attestato
    ========================================================================= */
 const TODAY = 'Venerdì 25 settembre 2026';
-const ME = W('Tu', 'Allievo · Gestione della Circolazione', 'me');
+let ME = W('Tu', 'Allievo', 'me');
+/* Risultati salvati separatamente per ogni modulo */
+const PS = () => { store.packs = store.packs || {}; if (!store.packs[MOD.id]) { store.packs[MOD.id] = { exam:0, passed:false, best:0, name:'', runs:0 }; if (MOD.id === 'M1' && store.exam) Object.assign(store.packs.M1, { exam:store.exam, passed:!!store.passed, best:store.best || 0, name:store.name || '' }); } return store.packs[MOD.id]; };
+const needsGate = tp => !!(tp.hunt && tp.hunt.some(h => HUNT_CATALOG[h.id].cantiere));
+const huntCount = tp => Object.keys(tpState(tp.id).hunt).length;
 const shuffle = a => { const b = a.slice(); for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; };
 const tpState = id => G.tp[id] || (G.tp[id] = { studied:false, intro:false, labs:0, labPts:0, labMax:0, quizOk:0, quizN:0, quizDone:false, done:false, hunt:{}, huntErr:0 });
 const doneCount = () => TAPPE.filter(t => tpState(t.id).done).length;
@@ -2390,10 +2472,11 @@ function objMarker(o, y) { markerMat = markerMat || new THREE.MeshStandardMateri
 function studyBoard(tp) {
   const s = tpState(tp.id);
   const body = () => `<ul>${tp.points.map(p => `<li>${esc(p)}</li>`).join('')}</ul>${tp.crit ? `<div class="crit"><b>Nota critica dell'istruttore</b>${esc(tp.crit)}</div>` : ''}<p class="label" style="margin-top:6px">${s.studied ? '✓ Nei tuoi appunti · ' : ''}Referente: ${esc(HOSTS[tp.host].who)} · ${esc(tp.where)}</p>`;
-  openInspect({ wide:true, code:`Tappa ${tp.n} · Sotto-modulo ${tp.sub}`, title:tp.title, draw:x => x.drawImage(tp.canvas, 0, 0), body,
+  openInspect({ wide:true, code:`Tappa ${tp.n}${tp.sub ? ' · Sotto-modulo ' + tp.sub : ''}`, title:tp.title, draw:x => x.drawImage(tp.canvas, 0, 0), body,
     actions:[{ t:'Annota sul libretto', cond:() => !s.studied, act:() => { s.studied = true; Sound.ui('item'); addXp(20, 'Pannello studiato'); toast(`Appunti aggiornati · Tappa ${tp.n}`, 'item'); refreshObjective(); } }] });
 }
 function setupObjects() {
+  for (const o of OBJS) if (o.marker) scene.remove(o.marker); OBJS.length = 0;
   for (const tp of TAPPE) {
     const [x, y, z] = tp.board.pos, fx = Math.sin(tp.board.ry), fz = Math.cos(tp.board.ry);
     const o = addObj({ id:'b' + tp.n, pos:tp.board.wall ? [x + fx * 0.9, y - 0.8, z + fz * 0.9] : [x + fx * 0.9, y + 1.1, z + fz * 0.9], r:2.1, board:true,
@@ -2402,28 +2485,36 @@ function setupObjects() {
   }
   addObj({ id:'locker', pos:[10.9, 5.2, 18.5], r:1.6, label:'', dyn:() => P.dpi.vest ? 'Riponi gilet e casco nell\'armadietto' : 'Prendi gilet e casco dall\'armadietto DPI',
     inspect:() => { const on = !P.dpi.vest; P.dpi.vest = P.dpi.helmet = on; setDpi(); Sound.ui(on ? 'item' : 'click'); toast(on ? 'DPI indossati: gilet ad alta visibilità e casco' : 'DPI riposti nell\'armadietto', on ? 'good' : ''); refreshObjective(); } });
-  const T11 = tpById('infra');
-  for (const hs of T11.hunt) {
-    const o = addObj({ id:'h-' + hs.id, pos:hs.pos, r:1.9, label:hs.label, cond:() => G.flags.gateOpen, want:() => G.flags.gateOpen && !tpState('infra').hunt[hs.id],
+  for (const tp of TAPPE.filter(t => t.hunt)) for (const hs of tp.hunt) {
+    const C = HUNT_CATALOG[hs.id], open = () => tpState(tp.id).intro && (!C.cantiere || G.flags.gateOpen);
+    const o = addObj({ id:'h-' + hs.id, pos:hs.pos, r:1.9, label:hs.label, cond:open, want:() => open() && !tpState(tp.id).hunt[hs.id],
       inspect:() => openInspect({ code:hs.code, title:hs.title, draw:(x, w, h) => drawHotspot(x, w, h, hs),
-        body:() => { const s = tpState('infra'); return `<p>${esc(hs.desc)}</p><p>${s.hunt[hs.id] ? `<b style="color:var(--green)">Riconosciuto: ${esc(T11.huntOpts[hs.ans])}</b>` : 'A quale specialità della manutenzione dell\'infrastruttura appartiene?'}</p><p class="label">Elementi riconosciuti ${Object.keys(s.hunt).length}/4</p>`; },
-        actions:T11.huntOpts.map((t, k) => ({ t, cond:() => !tpState('infra').hunt[hs.id], act:() => huntAnswer(hs, k) })) }) });
-    objMarker(o, hs.pos[1] + (hs.id === 'segnale' ? 1.55 : 0.95));
+        body:() => { const s = tpState(tp.id); return `<p>${esc(hs.desc)}</p><p>${s.hunt[hs.id] ? `<b style="color:var(--green)">Riconosciuto: ${esc(hs.opts[hs.ans])}</b>` : 'Scegli la risposta corretta.'}</p><p class="label">Elementi riconosciuti ${huntCount(tp)}/${tp.hunt.length}</p>`; },
+        actions:hs.opts.map((t, k) => ({ t, cond:() => !tpState(tp.id).hunt[hs.id], act:() => huntAnswer(tp, hs, k) })) }) });
+    objMarker(o, C.mark);
   }
 }
-function huntAnswer(hs, k) {
-  const s = tpState('infra');
-  if (k === hs.ans) { s.hunt[hs.id] = true; Sound.ui('right'); addXp(s.huntErr ? 15 : 25, `Riconosciuto: ${tpById('infra').huntOpts[k]}`); if (Object.keys(s.hunt).length === 4) toast('Quattro su quattro: torna dal referente MMI al cancello', 'good'); refreshObjective(); }
-  else { s.huntErr++; Sound.ui('wrong'); toast('Non è questa la specialità: rileggi la descrizione', 'bad'); }
+function huntAnswer(tp, hs, k) {
+  const s = tpState(tp.id);
+  if (k === hs.ans) { s.hunt[hs.id] = true; Sound.ui('right'); addXp(s.huntErr ? 15 : 25, `Riconosciuto: ${hs.opts[k]}`); if (huntCount(tp) === tp.hunt.length) toast(`Fatto: torna da ${HOSTS[tp.host].who}`, 'good'); refreshObjective(); }
+  else { s.huntErr++; Sound.ui('wrong'); toast('Risposta non corretta: rileggi la descrizione', 'bad'); }
 }
 function drawHotspot(x, w, h, hs) {
   const g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#20262f'); g.addColorStop(1, '#0c0f13'); x.fillStyle = g; x.fillRect(0, 0, w, h);
-  x.save(); x.translate(w / 2, h / 2);
-  if (hs.id === 'rotaie') { for (let i = 0; i < 3; i++) { x.fillStyle = '#8a8f96'; x.fillRect(-260, 40 - i * 34, 520, 18); x.fillStyle = '#5b6068'; x.fillRect(-260, 58 - i * 34, 520, 8); } x.fillStyle = '#6d6356'; x.fillRect(-300, 120, 600, 90); }
-  else if (hs.id === 'segnale') { x.fillStyle = '#111'; x.fillRect(-60, -200, 120, 250); x.fillRect(-10, 50, 20, 200); x.fillStyle = '#ff3322'; x.beginPath(); x.arc(0, -130, 38, 0, 7); x.fill(); x.fillStyle = '#12351f'; x.beginPath(); x.arc(0, -30, 38, 0, 7); x.fill(); }
-  else if (hs.id === 'sse') { x.fillStyle = '#6b7686'; x.fillRect(-120, -220, 240, 440); x.fillStyle = '#f2c200'; x.beginPath(); x.moveTo(0, -170); x.lineTo(70, -60); x.lineTo(-70, -60); x.closePath(); x.fill(); x.fillStyle = '#111'; x.font = `800 60px ${FONT}`; x.textAlign = 'center'; x.fillText('⚡', 0, -76); x.fillStyle = '#fff'; x.font = `700 34px ${FONT}`; x.fillText('SSE · 750 V c.c.', 0, 40); }
-  else { x.fillStyle = '#9aa0a6'; x.fillRect(-300, -300, 600, 600); x.strokeStyle = '#3a3a3a'; x.lineWidth = 4; x.beginPath(); x.moveTo(-40, -300); x.lineTo(-10, -80); x.lineTo(-30, 60); x.lineTo(10, 300); x.stroke(); x.fillStyle = '#f2f2f2'; x.fillRect(-120, -40, 240, 80); x.fillStyle = '#f2c200'; x.fillRect(-10, -40, 130, 80); x.strokeStyle = '#c0392b'; x.lineWidth = 3; x.beginPath(); x.moveTo(0, -50); x.lineTo(0, 50); x.stroke(); }
-  x.restore(); x.fillStyle = '#7cc8f0'; x.font = `700 28px ${FONT}`; x.fillText(hs.title.toUpperCase(), 30, h - 36);
+  x.save(); x.translate(w / 2, h / 2); x.textAlign = 'center';
+  switch (hs.id) {
+    case 'rotaie': for (let i = 0; i < 3; i++) { x.fillStyle = '#8a8f96'; x.fillRect(-260, 40 - i * 34, 520, 18); x.fillStyle = '#5b6068'; x.fillRect(-260, 58 - i * 34, 520, 8); } x.fillStyle = '#6d6356'; x.fillRect(-300, 120, 600, 90); break;
+    case 'segnale': x.fillStyle = '#111'; x.fillRect(-60, -200, 120, 250); x.fillRect(-10, 50, 20, 200); x.fillStyle = '#ff3322'; x.beginPath(); x.arc(0, -130, 38, 0, 7); x.fill(); x.fillStyle = '#12351f'; x.beginPath(); x.arc(0, -30, 38, 0, 7); x.fill(); break;
+    case 'sse': x.fillStyle = '#6b7686'; x.fillRect(-120, -220, 240, 440); x.fillStyle = '#f2c200'; x.beginPath(); x.moveTo(0, -170); x.lineTo(70, -60); x.lineTo(-70, -60); x.closePath(); x.fill(); x.fillStyle = '#fff'; x.font = `700 34px ${FONT}`; x.fillText('SSE · 750 V c.c.', 0, 40); break;
+    case 'fessurimetro': x.fillStyle = '#9aa0a6'; x.fillRect(-300, -300, 600, 600); x.strokeStyle = '#3a3a3a'; x.lineWidth = 4; x.beginPath(); x.moveTo(-40, -300); x.lineTo(-10, -80); x.lineTo(-30, 60); x.lineTo(10, 300); x.stroke(); x.fillStyle = '#f2f2f2'; x.fillRect(-120, -40, 240, 80); x.fillStyle = '#f2c200'; x.fillRect(-10, -40, 130, 80); break;
+    case 'estintore': x.fillStyle = '#b81d12'; rr(x, -70, -180, 140, 340, 40); x.fill(); x.fillStyle = '#222'; x.fillRect(-30, -230, 60, 60); x.fillStyle = '#f4f1ea'; x.fillRect(-55, -60, 110, 120); x.fillStyle = '#222'; x.font = `700 26px ${FONT}`; x.fillText('CO₂', 0, 10); break;
+    case 'dae': x.fillStyle = '#0b8a43'; rr(x, -170, -160, 340, 320, 20); x.fill(); x.fillStyle = '#fff'; x.font = `800 90px ${FONT}`; x.fillText('DAE', 0, 10); x.font = `600 30px ${SANS}`; x.fillText('Defibrillatore', 0, 70); break;
+    case 'sos': x.fillStyle = '#f2c200'; rr(x, -60, -240, 120, 480, 30); x.fill(); x.fillStyle = '#c0392b'; x.beginPath(); x.arc(0, -120, 34, 0, 7); x.fill(); x.fillStyle = '#111'; x.font = `800 40px ${FONT}`; x.fillText('SOS', 0, -40); break;
+    case 'tornelli': for (const k of [-1, 1]) { x.fillStyle = '#9aa3ad'; x.fillRect(k * 170 - 30, -120, 60, 260); } x.fillStyle = '#c0392b'; x.fillRect(-140, -20, 280, 26); x.fillStyle = '#2ecc71'; x.fillRect(-190, -150, 20, 12); break;
+    case 'lineagialla': x.fillStyle = '#4a4f58'; x.fillRect(-320, -200, 640, 320); x.fillStyle = '#f2c200'; x.fillRect(-320, 40, 640, 26); x.fillStyle = '#222'; x.fillRect(-320, 120, 640, 90); break;
+    case 'display': x.fillStyle = '#050505'; x.fillRect(-280, -90, 560, 180); x.fillStyle = '#ffb020'; x.font = `700 56px ${FONT}`; x.fillText('2  BRIN   3\'', 0, 20); break;
+  }
+  x.restore(); x.textAlign = 'left'; x.fillStyle = '#7cc8f0'; x.font = `700 28px ${FONT}`; x.fillText(hs.title.toUpperCase().slice(0, 40), 30, h - 36);
 }
 /* ---- Laboratori: ordinamento, abbinamento, scelta multipla ---- */
 const LAB = { lab:null, tp:null, done:null, checked:false, tries:0, first:null };
@@ -2504,65 +2595,44 @@ function tappaStep(tp, npc) {
 function completeTappa(tp, npc) {
   const s = tpState(tp.id); if (s.done) return; s.done = true; Sound.ui('level'); addXp(50, `Tappa ${tp.n} completata`); refreshObjective();
   const nx = nextTappa();
-  openDialog([line(npc.w, nx ? `Tappa ${tp.n} completata. La prossima è la <em>${nx.n}, ${nx.title}</em>: ${nx.where}. La trovi segnata sulla mappa del libretto.` : 'Hai completato tutte le dodici tappe. In aula ti aspetta la commissione per l\'esame di fine modulo.')], null, npc);
+  openDialog([line(npc.w, nx ? `Tappa ${tp.n} completata. La prossima è la <em>${nx.n}, ${nx.title}</em>: ${nx.where}. La trovi segnata sulla mappa del libretto.` : `Hai completato tutte le tappe. In aula ti aspetta ${HOSTS[MOD.esam].who} per l'esame di fine modulo.`)], null, npc);
 }
-/* ---- Referenti (solo ruoli, nessun nominativo) ---- */
-const HOSTS = {
-  istr:{ who:'Istruttore', org:'Sistema di Gestione delle Competenze', pos:[9.2, 8.4], yaw:Math.PI, idle:'stand', look:() => ({ top:APPEAR.uni.polo, sleeves:'short', bottom:APPEAR.uni.trousers, female:true, hairStyle:'ponytail', hairM:APPEAR.hair[1], skin:APPEAR.skins[1] }) },
-  tsgs:{ who:'Tecnico SGS', org:'Funzione SGA · Sicurezza', pos:[16.8, 18.6], yaw:-Math.PI / 2, idle:'read', look:() => ({ top:APPEAR.uni.white, sleeves:'long', bottom:APPEAR.uni.grey, female:false, hairStyle:'short', hairM:APPEAR.hair[0], skin:APPEAR.skins[3] }) },
-  de:{ who:'Direttore di Esercizio', org:'DE · Esercizio', pos:[5.8, 18.6], yaw:Math.PI, idle:'stand', look:() => ({ top:APPEAR.uni.suit, sleeves:'long', bottom:APPEAR.uni.suit, female:true, hairStyle:'bob', hairM:APPEAR.hair[5], skin:APPEAR.skins[0] }) },
-  esam:{ who:'Commissione d\'esame', org:'Esaminatore · SGC', pos:[8.8, 21.4], yaw:Math.PI, idle:'read', look:() => ({ top:APPEAR.uni.grey, sleeves:'long', bottom:APPEAR.uni.trousers, female:false, hairStyle:'buzz', hairM:APPEAR.hair[3], skin:APPEAR.skins[2] }) },
-  rsgs:{ who:'Responsabile SGS', org:'RSGS · Sicurezza', pos:[51.8, 11.4], yaw:0, idle:'stand', look:() => ({ top:APPEAR.uni.teal, sleeves:'long', bottom:APPEAR.uni.trousers, female:false, hairStyle:'short', hairM:APPEAR.hair[3], skin:APPEAR.skins[1] }) },
-  rsgc:{ who:'Responsabile SGC', org:'RSGC · Competenze', pos:[61.8, 11.4], yaw:0, idle:'read', look:() => ({ top:APPEAR.uni.burgundy, sleeves:'long', bottom:APPEAR.uni.trousers, female:true, hairStyle:'long', hairM:APPEAR.hair[0], skin:APPEAR.skins[4] }) },
-  cond:{ who:'Agente di condotta', org:'Esercizio MET · in pausa', pos:[73.8, 11.6], yaw:0.4, idle:'stand', look:() => ({ top:APPEAR.uni.driver, sleeves:'long', bottom:APPEAR.uni.driver, female:false, hairStyle:'curly', hairM:APPEAR.hair[0], skin:APPEAR.skins[5] }) },
-  srm:{ who:'Referente SRM', org:'MMV · Veicoli e Officina', pos:[87.8, 11.4], yaw:0.2, idle:'stand', look:() => ({ top:APPEAR.uni.itr, sleeves:'long', bottom:APPEAR.uni.trousers, female:true, hairStyle:'bun', hairM:APPEAR.hair[2], skin:APPEAR.skins[0] }) },
-  mmi:{ who:'Referente Infrastruttura', org:'MMI · Manutenzione Infrastrutture', pos:[95.3, 10.2], yaw:0, idle:'stand', look:() => ({ top:APPEAR.uni.worker, sleeves:'long', bottom:APPEAR.uni.trousers, female:false, hairStyle:'buzz', hairM:APPEAR.hair[1], skin:APPEAR.skins[2], helmet:APPEAR.helmY }) }
-};
-const GREET = {
-  istr:() => !G.flags.met ? 'Benvenuto! Sei dei nostri per il corso di Gestione della Circolazione? Oggi il Modulo 1 lo facciamo qui, in stazione, con il servizio in corso.' : 'Come procede il percorso?',
-  tsgs:() => 'Ciao. Io seguo i processi del SGS: rischi, indicatori, documenti. Chiedi pure.', de:() => 'Buongiorno. Qui in aula facciamo il punto su chi risponde di cosa.',
-  esam:() => allDone() ? (store.passed ? 'Bentornato. Vuoi ripetere la prova?' : 'Hai completato le dodici tappe: quando vuoi, cominciamo.') : `Buongiorno. L'esame si sostiene dopo le dodici tappe: ne hai completate ${doneCount()}.`,
-  rsgs:() => 'Buongiorno. Da qui vedo tutta la banchina: è il posto giusto per parlare di sicurezza.', rsgc:() => 'Ciao, benvenuto nel percorso. Le competenze sono la mia materia.',
-  cond:() => 'Ciao. Dieci minuti di pausa, poi riprendo il treno. Hai domande?', srm:() => 'Buongiorno! Stamattina tre treni riammessi in servizio dopo la manutenzione programmata.',
-  mmi:() => G.flags.gateOpen ? 'Resta dietro le transenne e segui il camminamento.' : 'Buongiorno. Oltre questo cancello c\'è il nostro cantiere.'
-};
+/* ---- Referenti (solo ruoli, nessun nominativo): definiti nel pacchetto ---- */
 function hostTopics(key, npc) {
-  const T = [];
-  if (key === 'istr') {
-    T.push({ t:'Presentati e chiedi come funziona il percorso', cond:() => !G.flags.met, act:() => { G.flags.met = true; addXp(10); refreshObjective(); }, next:[
-      line(npc.w, 'Dodici tappe. A ognuna trovi un <em>totem</em> con il pannello da studiare e un <em>referente</em> che ti spiega il suo ruolo, ti propone un laboratorio e due domande. Prima il pannello, poi il referente.'),
-      line(npc.w, 'Le prime tre tappe sono qui con me, in atrio. Poi il Tecnico SGS, il Direttore di Esercizio in aula, e giù in banchina gli altri. Per il cantiere ti serviranno <em>gilet e casco</em>: l\'armadietto è in aula. Alla fine, l\'esame con la commissione.'),
-      line(ME, 'Il libretto dell\'allievo raccoglie percorso, appunti e mappa. Si parte.')] });
-    T.push({ t:'Dove vado adesso?', cond:() => G.flags.met, next:() => { const nx = nextTappa(); return [line(npc.w, nx ? `Tappa ${nx.n}, <em>${nx.title}</em>: ${nx.where}. Il referente è ${HOSTS[nx.host].who}. ${tpState(nx.id).studied ? 'Il pannello l\'hai già studiato: vai dal referente.' : 'Parti dal pannello.'}` : 'Hai finito tutte le tappe: la commissione ti aspetta in aula.')]; } });
+  const T = [], H = HOSTS[key];
+  if (key === MOD.guida) {
+    T.push({ t:'Presentati e chiedi come funziona il percorso', cond:() => !G.flags.met, act:() => { G.flags.met = true; addXp(10); refreshObjective(); },
+      next:() => [...MOD.guidaSpiegazione.map(t => line(npc.w, t)), line(ME, 'Il libretto dell\'allievo raccoglie percorso, appunti e mappa. Si parte.')] });
+    T.push({ t:'Dove vado adesso?', cond:() => G.flags.met, next:() => { const nx = nextTappa(); return [line(npc.w, nx ? `Tappa ${nx.n}, <em>${nx.title}</em>: ${nx.where}. Il referente è ${HOSTS[nx.host].who}. ${tpState(nx.id).studied ? 'Il pannello l\'hai già studiato: vai dal referente.' : 'Parti dal pannello.'}` : `Hai finito tutte le tappe: ${HOSTS[MOD.esam].who} ti aspetta in aula.`)]; } });
   }
   for (const tp of TAPPE.filter(t => t.host === key)) {
     const s = tpState(tp.id);
+    T.push({ t:`Tappa ${tp.n} · ${tp.title}`, cond:() => !s.studied, next:[line(npc.w, `Prima studia il pannello: ${tp.where.toLowerCase()}. Poi ne parliamo${tp.hunt ? ' e andiamo a vedere dal vero' : ' e ti metto alla prova'}.`)] });
     if (tp.hunt) {
-      T.push({ t:`Tappa ${tp.n} · ${tp.title}`, cond:() => !s.studied, next:[line(npc.w, 'Prima leggi il pannello qui accanto, il totem 11. Poi ti porto a vedere i sottosistemi dal vero.')] });
-      T.push({ t:`Tappa ${tp.n} · spiegami le specialità`, cond:() => s.studied && !s.intro, act:() => { s.intro = true; refreshObjective(); }, next:tp.intro.map(t => line(npc.w, t)) });
-      T.push({ t:'Chiedi di entrare in cantiere', cond:() => s.intro && !G.flags.gateOpen, next:() => !(P.dpi.vest && P.dpi.helmet) ? [line(npc.w, 'Senza gilet e casco non entra nessuno, nemmeno gli allievi. L\'armadietto DPI è in aula, accanto all\'ufficio.')]
-        : [line(npc.w, 'Gilet e casco, bene. Ti apro: scendi dalla rampa, resta sul camminamento lontano dalle attrezzature, e trova i quattro elementi. Il binario 1 è interdetto alla circolazione.')], act:() => { if (P.dpi.vest && P.dpi.helmet) openGate(); } });
-      T.push({ t:'Ho riconosciuto i quattro elementi', cond:() => G.flags.gateOpen && Object.keys(s.hunt).length === 4 && !s.quizDone, then:() => openDialog([line(npc.w, s.huntErr ? `Fatto, con ${s.huntErr} ${s.huntErr === 1 ? 'errore' : 'errori'} lungo la strada: capita, è così che si impara. Due domande e chiudiamo.` : 'Quattro su quattro al primo colpo. Due domande e chiudiamo.'), ...quizNodes(tp, npc)], () => { s.quizDone = true; completeTappa(tp, npc); }, npc) });
-      if (s.done) T.push({ t:`Tappa ${tp.n} · ripassiamo`, next:[line(npc.w, tp.points.join(' '))] });
-      continue;
-    }
-    T.push({ t:`Tappa ${tp.n} · ${tp.title}`, cond:() => !s.studied, next:[line(npc.w, `Prima studia il pannello qui vicino: ${tp.where.toLowerCase()}. Poi ne parliamo e ti metto alla prova.`)] });
-    T.push({ t:`Tappa ${tp.n} · ${tp.title}: spiegamela e mettimi alla prova`, tag:s.labs ? 'riprendi' : '', cond:() => s.studied && !s.done, then:() => runTappa(tp, npc) });
+      const n = tp.hunt.length;
+      T.push({ t:`Tappa ${tp.n} · ${tp.title}: spiegamela`, cond:() => s.studied && !s.intro, act:() => { s.intro = true; refreshObjective(); },
+        next:[...tp.intro.map(t => line(npc.w, t)), line(npc.w, `Ora tocca a te: ${needsGate(tp) ? 'oltre il cancello del cantiere, con gilet e casco, ' : ''}trova ${n === 1 ? 'l\'elemento segnato' : `i ${n} elementi segnati`} dai rombi azzurri e rispondi alla domanda su ciascuno.`)] });
+      if (needsGate(tp)) T.push({ t:'Chiedi di entrare in cantiere', cond:() => s.intro && !G.flags.gateOpen, act:() => { if (P.dpi.vest && P.dpi.helmet) openGate(); },
+        next:() => !(P.dpi.vest && P.dpi.helmet) ? [line(npc.w, 'Senza gilet e casco non entra nessuno, nemmeno gli allievi. L\'armadietto DPI è in aula, accanto all\'ufficio.')]
+          : [line(npc.w, 'Gilet e casco, bene. Ti apro: scendi dalla rampa e resta sul camminamento, lontano dalle attrezzature. Il binario 1 è interdetto alla circolazione.')] });
+      T.push({ t:n === 1 ? 'Ho riconosciuto l\'elemento' : `Ho riconosciuto i ${n} elementi`, cond:() => s.intro && huntCount(tp) === n && !s.done,
+        then:() => openDialog([line(npc.w, s.huntErr ? `Fatto, con ${s.huntErr} ${s.huntErr === 1 ? 'errore' : 'errori'} lungo la strada: capita, è così che si impara.` : 'Tutto riconosciuto al primo colpo.')], () => tappaStep(tp, npc), npc) });
+    } else T.push({ t:`Tappa ${tp.n} · ${tp.title}: spiegamela e mettimi alla prova`, tag:s.labs ? 'riprendi' : '', cond:() => s.studied && !s.done, then:() => runTappa(tp, npc) });
     T.push({ t:`Tappa ${tp.n} · ripassiamo`, cond:() => s.done, next:[line(npc.w, tp.intro[0])] });
   }
-  if (key === 'esam') {
-    T.push({ t:store.passed ? 'Ripeti l\'esame di fine modulo' : 'Sostieni l\'esame di fine modulo', cond:allDone, then:() => openDialog([line(npc.w, 'Dieci domande su tutto il modulo, una per volta. Nessun riscontro durante la prova: gli esiti e le spiegazioni alla fine. Servono sette risposte corrette.')], startExam, npc) });
-    T.push({ t:'Chi nomina la commissione?', next:[line(npc.w, 'Le commissioni d\'esame le nomina il Responsabile del Sistema di Gestione delle Competenze. Questa di oggi è una simulazione: l\'esame vero lo farai con la commissione ufficiale.')] });
-  }
-  if (key === 'cond') T.push({ t:'Com\'è andata la segnalazione del near miss?', cond:() => tpState('uomo').intro, next:[line(npc.w, 'L\'RSGS mi ha chiamato per capire la dinamica, non per cercare un colpevole. Hanno allungato di un secondo l\'avviso sonoro di chiusura porte in quella stazione. Un piccolo cambiamento, nato da una segnalazione.')] });
-  if (key === 'srm') T.push({ t:'Cosa succede se un treno ha un difetto in linea?', next:[line(npc.w, 'Se il difetto riguarda la sicurezza, il treno esce dal servizio e rientra in officina. Torna in linea solo quando la gestione flotta lo riammette, con i controlli registrati.')] });
+  if (key === MOD.esam) T.push({ t:PS().passed ? 'Ripeti l\'esame di fine modulo' : 'Sostieni l\'esame di fine modulo', cond:allDone,
+    then:() => openDialog([line(npc.w, `${MOD.domande} domande su tutto il modulo, una per volta. Nessun riscontro durante la prova: gli esiti e le spiegazioni alla fine. Servono ${MOD.soglia} risposte corrette.`)], startExam, npc) });
+  if (H.extraQ && H.extraA) T.push({ t:H.extraQ, next:[line(npc.w, H.extraA)] });
   return T;
 }
 function staff(key) {
   const H = HOSTS[key], n = new Npc({ kind:'staff', r:0.3, name:H.who, role:H.org, x:H.pos[0], z:H.pos[1], yaw:H.yaw, idle:H.idle, ...H.look() });
-  n.pid = key; n.w = W(H.who, H.org, key); n.greet = GREET[key]; n.topics = () => hostTopics(key, n);
-  n.hasTask = () => key === 'istr' ? !G.flags.met : key === 'esam' ? allDone() && !store.passed : TAPPE.some(t => t.host === key && !tpState(t.id).done && (tpState(t.id).studied || t.hunt));
-  n.allDone = () => key !== 'istr' && key !== 'esam' && TAPPE.filter(t => t.host === key).every(t => tpState(t.id).done);
+  const mine = TAPPE.filter(t => t.host === key);
+  n.pid = key; n.w = W(H.who, H.org, key); n.topics = () => hostTopics(key, n);
+  n.greet = () => key === MOD.esam ? (allDone() ? (PS().passed ? 'Bentornato. Vuoi ripetere la prova?' : `Hai completato le ${TAPPE.length} tappe: quando vuoi, cominciamo.`) : `${H.saluto} L'esame si sostiene dopo le ${TAPPE.length} tappe: ne hai completate ${doneCount()}.`)
+    : (G.flags.gateOpen && mine.some(needsGate) ? 'Resta dietro le transenne e segui il camminamento.' : H.saluto || 'Dimmi pure.');
+  n.hasTask = () => (key === MOD.guida && !G.flags.met) || (key === MOD.esam && allDone() && !PS().passed) || mine.some(t => !tpState(t.id).done && (tpState(t.id).studied || t.hunt));
+  n.allDone = () => mine.length > 0 && mine.every(t => tpState(t.id).done);
   return n;
 }
 let WORKER = null;
@@ -2573,7 +2643,7 @@ function setupPeople() {
   for (let i = 0; i < 6; i++) { const [x, z] = platformSpot(); spawnPassenger('wait', x, z); }
   for (let i = 0; i < 3; i++) { const n = spawnPassenger('in', 15.5 + rand(-1, 1), 3); n.hold = i * 2.5; }
 }
-function openGate() { G.flags.gateOpen = true; const d = WORLD.doors.gate; d.target = 1; for (const c of d.cells) grid.locked[c] = 0; d.lock.material = M.led; Sound.ui('door'); toast('Cancello aperto: trova i 4 elementi nel cantiere e in galleria', 'good'); refreshObjective(); }
+function openGate() { G.flags.gateOpen = true; const d = WORLD.doors.gate; d.target = 1; for (const c of d.cells) grid.locked[c] = 0; d.lock.material = M.led; Sound.ui('door'); toast('Cancello aperto: cerca gli elementi segnati nel cantiere e in galleria', 'good'); refreshObjective(); }
 const PASS_TALK = [
   ['Buongiorno! Scusi, il prossimo per Brin tra quanto passa?', 'Guardi il display in banchina: di solito tra quattro e sei minuti.'],
   ['Siete del corso? Vi ho visti con i cartelli…', 'Sì, oggi si studia sul campo. Buon viaggio!'],
@@ -2584,16 +2654,17 @@ function talkPassenger(n) { const [a, b] = pick(PASS_TALK); openDialog([line(W('
 /* ---- Obiettivo corrente ---- */
 function refreshObjective() {
   let t, s, c = `Tappe ${doneCount()}/${TAPPE.length}`;
-  const nx = nextTappa();
-  if (!G.flags.met) { t = 'Presentati all\'istruttore'; s = 'Atrio, vicino all\'ingresso da Piazza Verdi.'; c = ''; }
+  const nx = nextTappa(), guide = HOSTS[MOD.guida];
+  if (!G.flags.met) { t = 'Presentati al referente guida'; s = `${guide.who}: ${guide.pos[0] < 30 && guide.pos[1] < 16 ? 'in atrio, vicino all\'ingresso' : 'segui le indicazioni in stazione'}.`; c = ''; }
   else if (nx) {
-    const st = tpState(nx.id); t = `Tappa ${nx.n} · ${nx.title}`;
+    const st = tpState(nx.id), who = HOSTS[nx.host].who; t = `Tappa ${nx.n} · ${nx.title}`;
     if (!st.studied) s = `${nx.where}: studia il pannello.`;
-    else if (nx.hunt && st.intro && !G.flags.gateOpen) s = P.dpi.vest && P.dpi.helmet ? 'Chiedi al referente MMI di aprire il cancello.' : 'Prendi gilet e casco dall\'armadietto in aula, poi torna al cancello.';
-    else if (nx.hunt && G.flags.gateOpen && Object.keys(st.hunt).length < 4) s = `Riconosci gli elementi nel cantiere e in galleria: ${Object.keys(st.hunt).length}/4.`;
-    else if (nx.hunt && G.flags.gateOpen) s = 'Torna dal referente MMI al cancello.';
-    else s = `Parla con: ${HOSTS[nx.host].who}.`;
-  } else if (!G.flags.examPassed) { t = 'Esame di fine modulo'; s = 'Aula didattica: parla con la commissione d\'esame.'; }
+    else if (nx.hunt && !st.intro) s = `Parla con: ${who}.`;
+    else if (nx.hunt && needsGate(nx) && !G.flags.gateOpen) s = P.dpi.vest && P.dpi.helmet ? `Chiedi a ${who} di aprire il cancello.` : 'Prendi gilet e casco dall\'armadietto in aula, poi torna al cancello.';
+    else if (nx.hunt && huntCount(nx) < nx.hunt.length) s = `Riconosci gli elementi segnati: ${huntCount(nx)}/${nx.hunt.length}.`;
+    else if (nx.hunt) s = `Torna da: ${who}.`;
+    else s = `Parla con: ${who}.`;
+  } else if (!G.flags.examPassed) { t = 'Esame di fine modulo'; s = `Aula didattica: parla con ${HOSTS[MOD.esam].who}.`; }
   else { t = 'Modulo completato'; s = 'Puoi ripetere l\'esame o esplorare la stazione.'; }
   if ($('objText').textContent !== t) { $('objText').textContent = t; const o = $('obj'); o.style.opacity = 0; requestAnimationFrame(() => { o.style.transition = 'opacity .6s'; o.style.opacity = 1; }); }
   $('objSub').textContent = s; $('chk').textContent = c;
@@ -2610,15 +2681,18 @@ function renderTablet(t) {
   $('tabMeta').textContent = `${TODAY} · ${clockStr()} · crediti ${fmt(G.xp)}`;
   const body = $('tabBody');
   if (t === 'plan') {
-    const rows = [];
-    for (const sub of ['1.1', '1.2']) {
-      rows.push(`<div class="sub1">Sotto-modulo ${sub} · ${sub === '1.1' ? 'Quadro normativo nazionale e ANSFISA' : 'Principi del SGS e mansioni'}</div>`);
-      for (const tp of TAPPE.filter(x => x.sub === sub)) {
-        const s = tpState(tp.id), st = s.done ? 'ok' : s.studied ? 'go' : '', lab = s.labMax ? `lab ${Math.round(s.labPts / s.labMax * 100)}%` : '', qz = s.quizN ? `quiz ${s.quizOk}/${s.quizN}` : '';
-        rows.push(`<div class="tp ${st}"><span class="n">${s.done ? '✓' : tp.n}</span><div><b>${esc(tp.title)}</b>${esc(tp.where)} · ${esc(HOSTS[tp.host].who)}<span class="sm">${[s.studied ? 'pannello studiato' : 'pannello da studiare', lab, qz].filter(Boolean).join(' · ')}</span></div><span class="chip ${s.done ? 'K' : s.studied ? 'B' : ''}">${s.done ? 'Completata' : s.studied ? 'In corso' : 'Da fare'}</span></div>`);
+    const rows = [], groups = MOD.subs.length ? MOD.subs.map(s => [s.codice, `Sotto-modulo ${s.codice} · ${s.titolo}`]) : [];
+    const known = new Set(groups.map(g => g[0])); if (TAPPE.some(t => !known.has(t.sub))) groups.push([null, groups.length ? 'Altre tappe' : 'Tappe del modulo']);
+    for (const [code, label] of groups) {
+      rows.push(`<div class="sub1">${esc(label)}</div>`);
+      for (const tp of TAPPE.filter(x => code === null ? !known.has(x.sub) : x.sub === code)) {
+        const s = tpState(tp.id), st = s.done ? 'ok' : s.studied ? 'go' : '', lab = s.labMax ? `lab ${Math.round(s.labPts / s.labMax * 100)}%` : '', qz = s.quizN ? `quiz ${s.quizOk}/${s.quizN}` : '', hu = tp.hunt ? `sopralluogo ${huntCount(tp)}/${tp.hunt.length}` : '';
+        rows.push(`<div class="tp ${st}"><span class="n">${s.done ? '✓' : tp.n}</span><div><b>${esc(tp.title)}</b>${esc(tp.where)} · ${esc(HOSTS[tp.host].who)}<span class="sm">${[s.studied ? 'pannello studiato' : 'pannello da studiare', hu, lab, qz].filter(Boolean).join(' · ')}</span></div><span class="chip ${s.done ? 'K' : s.studied ? 'B' : ''}">${s.done ? 'Completata' : s.studied ? 'In corso' : 'Da fare'}</span></div>`);
       }
     }
-    rows.push(`<div class="tp ${store.passed ? 'ok' : allDone() ? 'go' : ''}"><span class="n">★</span><div><b>Esame di fine modulo</b>Aula didattica · Commissione d'esame<span class="sm">${store.exam ? `miglior risultato ${store.exam}/10` : 'dieci domande, soglia 7/10'}</span></div><span class="chip ${store.passed ? 'K' : ''}">${store.passed ? 'Superato' : allDone() ? 'Disponibile' : 'Bloccato'}</span></div>`);
+    const R = PS();
+    rows.push(`<div class="tp ${R.passed ? 'ok' : allDone() ? 'go' : ''}"><span class="n">★</span><div><b>Esame di fine modulo</b>Aula didattica · ${esc(HOSTS[MOD.esam].who)}<span class="sm">${R.exam ? `miglior risultato ${R.exam}/${MOD.domande}` : `${MOD.domande} domande, soglia ${MOD.soglia}/${MOD.domande}`}</span></div><span class="chip ${R.passed ? 'K' : ''}">${R.passed ? 'Superato' : allDone() ? 'Disponibile' : 'Bloccato'}</span></div>`);
+    rows.push(`<p class="label" style="margin-top:12px">${esc(MOD.titolo)} · rev. ${esc(MOD.rev || '—')} · ${esc(MOD.data || '')} · ${MOD.stato === 'Approvato' ? `approvato${MOD.approvatoDa ? ' da ' + esc(MOD.approvatoDa) : ''}` : 'BOZZA, contenuti non ancora approvati'}</p>`);
     body.innerHTML = rows.join('');
   } else if (t === 'ev') {
     const st = TAPPE.filter(tp => tpState(tp.id).studied);
@@ -2638,13 +2712,16 @@ function renderTablet(t) {
 /* ---- Esame di fine modulo ---- */
 const EX = { qs:[], i:0, ans:[] };
 function startExam() {
-  const tps = shuffle(TAPPE.map(t => t.n)).slice(0, 10).sort((a, b) => a - b);
-  EX.qs = tps.map(n => { const q = pick(EXAM.filter(e => e.tp === n)); return { ...q, order:shuffle([0, 1, 2, 3]) }; }); EX.i = 0; EX.ans = [];
+  const byTp = {}; for (const e of EXAM) (byTp[e.tp] = byTp[e.tp] || []).push(e);
+  const picked = []; for (const n of shuffle(Object.keys(byTp))) { if (picked.length >= MOD.domande) break; picked.push(pick(byTp[n])); }
+  const rest = shuffle(EXAM.filter(e => !picked.includes(e))); while (picked.length < MOD.domande && rest.length) picked.push(rest.pop());
+  EX.qs = picked.sort((a, b) => a.tp - b.tp).map(q => ({ ...q, order:shuffle(q.a.map((_, i) => i)) })); EX.i = 0; EX.ans = [];
+  $('exNote').textContent = `Nessun riscontro durante la prova: gli esiti e le spiegazioni compaiono alla fine. Soglia di superamento: ${MOD.soglia} risposte corrette su ${EX.qs.length}.`;
   G.state = 'exam'; if (document.pointerLockElement) document.exitPointerLock();
   $('exam').hidden = false; $('exRun').hidden = false; $('exRes').hidden = true; renderExamQ(); Sound.ui('tablet');
 }
 function renderExamQ() {
-  const q = EX.qs[EX.i], tp = TAPPE[q.tp - 1];
+  const q = EX.qs[EX.i], tp = TAPPE.find(t => t.n === q.tp) || { n:q.tp, title:'' };
   $('exCount').textContent = `Domanda ${EX.i + 1} di ${EX.qs.length}`; $('exProg').firstChild.style.width = `${EX.i / EX.qs.length * 100}%`;
   $('exRef').textContent = `Tappa ${tp.n} · ${tp.title}`; $('exQ').textContent = q.q; const box = $('exOpts'); box.innerHTML = '';
   q.order.forEach((k, j) => { const b = document.createElement('button'); b.type = 'button'; b.innerHTML = `<b>${j + 1}</b><span>${esc(q.a[k])}</span>`; b.addEventListener('click', () => answerExam(j)); box.appendChild(b); });
@@ -2656,16 +2733,16 @@ function answerExam(j) {
   if (EX.i < EX.qs.length) renderExamQ(); else finishExam();
 }
 function finishExam() {
-  const ok = EX.ans.filter(a => a === 0).length, pass = ok >= 7; if (pass) G.flags.examPassed = true;
-  store.exam = Math.max(store.exam || 0, ok); if (pass) store.passed = true; store.runs = (store.runs || 0) + 1; store.best = Math.max(store.best || 0, G.xp); saveStore();
+  const ok = EX.ans.filter(a => a === 0).length, pass = ok >= MOD.soglia, R = PS(); if (pass) G.flags.examPassed = true;
+  R.exam = Math.max(R.exam || 0, ok); if (pass) R.passed = true; R.runs = (R.runs || 0) + 1; R.best = Math.max(R.best || 0, G.xp); saveStore();
   Sound.ui(pass ? 'level' : 'wrong');
   $('exRun').hidden = true; $('exRes').hidden = false; $('exVerdict').textContent = pass ? 'Superato' : 'Non superato'; $('exVerdict').className = 'verdict ' + (pass ? 'pass' : 'fail');
-  $('exScore').textContent = `${ok}/10`;
+  $('exScore').textContent = `${ok}/${EX.qs.length}`;
   const labs = TAPPE.reduce((a, t) => { const s = tpState(t.id); return [a[0] + s.labPts, a[1] + s.labMax]; }, [0, 0]), qz = TAPPE.reduce((a, t) => { const s = tpState(t.id); return [a[0] + s.quizOk, a[1] + s.quizN]; }, [0, 0]);
-  $('exStats').innerHTML = [['Crediti', fmt(G.xp)], ['Tappe', `${doneCount()}/12`], ['Laboratori al 1° tentativo', labs[1] ? `${Math.round(labs[0] / labs[1] * 100)}%` : '—'], ['Quiz di tappa', `${qz[0]}/${qz[1]}`]].map(([k, v]) => `<div class="stat"><span class="label">${k}</span><b>${v}</b></div>`).join('');
+  $('exStats').innerHTML = [['Crediti', fmt(G.xp)], ['Tappe', `${doneCount()}/${TAPPE.length}`], ['Laboratori al 1° tentativo', labs[1] ? `${Math.round(labs[0] / labs[1] * 100)}%` : '—'], ['Quiz di tappa', `${qz[0]}/${qz[1]}`]].map(([k, v]) => `<div class="stat"><span class="label">${k}</span><b>${v}</b></div>`).join('');
   $('exRows').innerHTML = EX.qs.map((q, i) => { const a = EX.ans[i], good = a === 0; return `<tr><td><b>${esc(q.q)}</b></td><td class="${good ? 'okc' : 'noc'}">${esc(q.a[a])}</td><td>${esc(q.a[0])}</td><td>${esc(q.why)}</td></tr>`; }).join('');
   $('certBox').hidden = !pass; $('bExAgain').textContent = pass ? 'Ripeti l\'esame' : 'Riprova l\'esame';
-  if (pass) { $('certName').value = store.name || ''; drawCert(); }
+  if (pass) { $('certName').value = R.name || ''; drawCert(); }
   refreshObjective(); $('exam').scrollTop = 0;
 }
 function drawCert() {
@@ -2678,17 +2755,123 @@ function drawCert() {
   x.fillStyle = '#44505e'; x.font = `500 34px ${SANS}`; x.fillText('si attesta che', w / 2, 420);
   x.fillStyle = '#16202c'; fit(name.slice(0, 40), 700, 82, SANS, w - 300); x.fillText(name.slice(0, 40), w / 2, 530); x.fillStyle = '#c9d3dd'; x.fillRect(w / 2 - 460, 560, 920, 3);
   x.fillStyle = '#44505e'; x.font = `500 34px ${SANS}`; x.fillText('ha completato il percorso di autoapprendimento', w / 2, 640);
-  x.fillStyle = '#15386e'; fit('Modulo 1 · Conoscenza sulla normativa di riferimento', 700, 44, SANS, w - 240); x.fillText('Modulo 1 · Conoscenza sulla normativa di riferimento', w / 2, 710);
-  x.fillStyle = '#44505e'; x.font = `500 30px ${SANS}`; x.fillText(`12 tappe completate · prova finale ${EX.ans.filter(a => a === 0).length}/10 · ${TODAY}`, w / 2, 780);
+  const mt = `${MOD.titolo} · ${MOD.nome}`; x.fillStyle = '#15386e'; fit(mt, 700, 44, SANS, w - 240); x.fillText(mt, w / 2, 710);
+  x.fillStyle = '#44505e'; x.font = `500 30px ${SANS}`; x.fillText(`${TAPPE.length} tappe completate · prova finale ${EX.ans.filter(a => a === 0).length}/${EX.qs.length} · ${TODAY}`, w / 2, 780);
+  x.font = `500 24px ${SANS}`; x.fillText(`Contenuti rev. ${MOD.rev || '—'} · ${MOD.stato === 'Approvato' ? 'approvati' : 'in bozza, non approvati'}`, w / 2, 830);
   x.fillStyle = '#b8321f'; x.font = `600 25px ${SANS}`; x.fillText('Simulazione didattica: non costituisce abilitazione, titolo o registrazione formativa.', w / 2, 900);
   x.fillText('La valutazione ufficiale spetta alla commissione d\'esame nominata dal Responsabile SGC.', w / 2, 938);
   x.textAlign = 'left'; $('certImg').src = c.toDataURL('image/png');
 }
 let certT = 0;
-$('certName').addEventListener('input', () => { clearTimeout(certT); certT = setTimeout(() => { store.name = $('certName').value.trim().slice(0, 40); saveStore(); drawCert(); }, 250); });
+$('certName').addEventListener('input', () => { clearTimeout(certT); certT = setTimeout(() => { PS().name = $('certName').value.trim().slice(0, 40); saveStore(); drawCert(); }, 250); });
 $('bExAgain').addEventListener('click', () => { Sound.init(); startExam(); });
 $('bExBack').addEventListener('click', () => { $('exam').hidden = true; G.state = 'play'; lockPointer(); });
 $('bExMenu').addEventListener('click', () => toTitle());
+
+/* =========================================================================
+   CARICA MODULO: lettura del modello Excel (o JSON), validazione, applicazione al motore
+   ========================================================================= */
+const PACK_KEY = 'sgsLearning.pack';
+const XLSX_URLS = ['https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js', 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js'];
+function loadSheetJS() {
+  if (window.XLSX) return Promise.resolve(window.XLSX);
+  return XLSX_URLS.reduce((p, u) => p.catch(() => new Promise((res, rej) => {
+    const s = document.createElement('script'); s.src = u; s.onload = () => window.XLSX ? res(window.XLSX) : rej(new Error('libreria non valida')); s.onerror = () => { s.remove(); rej(new Error('rete')); }; document.head.appendChild(s);
+  })), Promise.reject(new Error('start')));
+}
+const hkey = s => String(s == null ? '' : s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+const cellStr = v => v instanceof Date ? `${v.getFullYear()}-${String(v.getMonth() + 1).padStart(2, '0')}-${String(v.getDate()).padStart(2, '0')}` : norm(v);
+const splitOpts = s => cellStr(s).split('|').map(norm).filter(Boolean);
+/* Righe di un foglio come oggetti indicizzati per intestazione normalizzata, con foglio e riga di origine */
+function sheetRows(wb, name) {
+  const real = wb.SheetNames.find(n => hkey(n) === hkey(name)); if (!real) return null;
+  const A = XLSX.utils.sheet_to_json(wb.Sheets[real], { header:1, defval:'', raw:true, blankrows:true }), H = (A[0] || []).map(hkey), out = [];
+  for (let i = 1; i < A.length; i++) {
+    const r = A[i]; if (!r || r.every(v => v === '' || v == null)) continue;
+    const o = { _src:{ sheet:real, row:i + 1 } }; H.forEach((h, j) => { if (h) o[h] = r[j] instanceof Date ? r[j] : (r[j] == null ? '' : r[j]); }); out.push(o);
+  }
+  return out;
+}
+function workbookToPack(wb) {
+  const errs = [], need = n => { const r = sheetRows(wb, n); if (!r) errs.push(`Manca il foglio «${n}».`); return r || []; };
+  const Mrows = need('Modulo'), kv = {}; for (const r of Mrows) kv[hkey(r.campo)] = cellStr(r.valore);
+  const M = { _src:{ sheet:'Modulo', row:'—' }, id:kv['id modulo'], titolo:kv.titolo, nome:kv.nome, breve:kv['nome breve'], corso:kv.corso, allievo:kv['ruolo allievo'],
+    sottomoduli:[1, 2, 3, 4].map(k => ({ codice:kv[`sotto modulo ${k} codice`] || '', titolo:kv[`sotto modulo ${k} titolo`] || '' })).filter(s => s.codice),
+    revisione:kv.revisione, data:kv.data, stato:kv.stato, approvatoDa:kv['approvato da'], fonti:kv.fonti, guida:kv['referente guida'], esaminatore:kv.esaminatore,
+    domande:+kv['domande esame'] || 10, soglia:+kv['soglia esame'] || 7, presentazione:kv.presentazione, apertura:kv.apertura,
+    guidaSpiegazione:[1, 2, 3].map(k => kv[`spiegazione guida ${k}`]).filter(Boolean) };
+  const T = need('Tappe').filter(r => cellStr(r.n)).map(r => ({ _src:r._src, n:+r.n, id:cellStr(r.id), sotto:cellStr(r['sotto modulo']), titolo:cellStr(r.titolo), slot:cellStr(r.posizione).toUpperCase(),
+    referente:cellStr(r.referente), tipo:low(cellStr(r.tipo)) || 'standard', grafica:low(cellStr(r.grafica)) || 'modello', dedicata:cellStr(r['grafica dedicata']), modello:low(cellStr(r['modello pannello'])),
+    notaPannello:cellStr(r['nota sul pannello']), spiegazione:[1, 2, 3].map(k => cellStr(r[`spiegazione ${k}`])).filter(Boolean), nota:cellStr(r['nota critica']),
+    punti:[], elementi:[], labs:[], quiz:[], sopralluogo:[] }));
+  const tap = (r, what) => { const t = T.find(x => x.n === +cellStr(r.tappa)); if (!t) errs.push(`${what}: la riga fa riferimento alla tappa «${cellStr(r.tappa)}», che non esiste (foglio ${r._src.sheet}, riga ${r._src.row}).`); return t; };
+  const ord = (a, b) => (+cellStr(a.ordine) || 0) - (+cellStr(b.ordine) || 0);
+  for (const r of need('Punti').sort(ord)) { const t = tap(r, 'Punti'); if (t && cellStr(r['punto chiave'])) t.punti.push(cellStr(r['punto chiave'])); }
+  for (const r of need('Pannelli').sort(ord)) { const t = tap(r, 'Pannelli'); if (t) t.elementi.push({ titolo:cellStr(r.titolo), testo:cellStr(r.testo), testo2:cellStr(r['testo 2']) }); }
+  const labs = {};
+  for (const r of need('Laboratori')) { const t = tap(r, 'Laboratori'); if (!t) continue; const L = { _src:r._src, tipo:low(cellStr(r.tipo)), titolo:cellStr(r.titolo), istruzioni:cellStr(r.istruzioni), opzioni:splitOpts(r.opzioni), voci:[], k:+cellStr(r.lab) || 1 };
+    labs[`${t.n}/${L.k}`] = L; t.labs.push(L); }
+  for (const r of need('Voci')) { const L = labs[`${+cellStr(r.tappa)}/${+cellStr(r.lab) || 1}`]; if (!L) { errs.push(`Voci: nessun laboratorio ${cellStr(r.lab)} per la tappa ${cellStr(r.tappa)} (foglio ${r._src.sheet}, riga ${r._src.row}).`); continue; }
+    L.voci.push({ _src:r._src, testo:cellStr(r.voce), risposta:L.tipo === 'ordina' ? +cellStr(r.risposta) : cellStr(r.risposta), spiegazione:cellStr(r.spiegazione) }); }
+  T.forEach(t => t.labs.sort((a, b) => a.k - b.k));
+  for (const r of need('Quiz').sort(ord)) { const t = tap(r, 'Quiz'); if (t) t.quiz.push({ _src:r._src, domanda:cellStr(r.domanda), corretta:cellStr(r['risposta corretta']), errate:[1, 2, 3].map(k => cellStr(r[`errata ${k}`])).filter(Boolean), spiegazione:cellStr(r.spiegazione), fonte:cellStr(r.fonte) }); }
+  for (const r of (sheetRows(wb, 'Sopralluogo') || [])) { const t = tap(r, 'Sopralluogo'); if (t) t.sopralluogo.push({ _src:r._src, oggetto:low(cellStr(r.oggetto)), etichetta:cellStr(r.azione), titolo:cellStr(r.titolo), descrizione:cellStr(r.descrizione), opzioni:splitOpts(r.opzioni), corretta:cellStr(r['risposta corretta']) }); }
+  const esame = need('Esame').filter(r => cellStr(r.domanda)).map(r => ({ _src:r._src, tappa:+cellStr(r.tappa), domanda:cellStr(r.domanda), corretta:cellStr(r['risposta corretta']), errate:[1, 2, 3].map(k => cellStr(r[`errata ${k}`])).filter(Boolean), spiegazione:cellStr(r.spiegazione), fonte:cellStr(r.fonte) }));
+  const referenti = need('Referenti').filter(r => cellStr(r.id)).map(r => ({ _src:r._src, id:cellStr(r.id), ruolo:cellStr(r.ruolo), struttura:cellStr(r.struttura), sigla:cellStr(r.sigla), colore:cellStr(r.colore), divisa:cellStr(r.divisa),
+    figura:cellStr(r.figura), capelli:cellStr(r.capelli), coloreCapelli:cellStr(r['colore capelli']), carnagione:+cellStr(r.carnagione) || 3, posa:cellStr(r.posa), casco:cellStr(r.casco), saluto:cellStr(r.saluto), domandaExtra:cellStr(r['domanda extra']), rispostaExtra:cellStr(r['risposta extra']) }));
+  const sigle = (sheetRows(wb, 'Sigle') || []).filter(r => cellStr(r.sigla)).map(r => ({ sigla:cellStr(r.sigla), significato:cellStr(r.significato) }));
+  let bad = 0; for (const n of ['Tappe', 'Punti', 'Laboratori', 'Quiz', 'Sopralluogo', 'Esame']) for (const r of (sheetRows(wb, n) || [])) if (low(cellStr(r.revisione)) === 'da correggere') bad++;
+  return { formato:'sgs-learning', versione:1, modulo:M, referenti, tappe:T, esame, sigle, _errors:errs, _revisione:bad };
+}
+/* Lettura del file scelto dall'utente */
+async function readPackFile(file) {
+  const name = file.name.toLowerCase();
+  if (name.endsWith('.json')) { const p = JSON.parse(await file.text()); if (!p || p.formato !== 'sgs-learning') throw new Error('Il file JSON non è un pacchetto SGS Learning.'); return p; }
+  if (!/\.xls[xm]$/.test(name)) throw new Error('Formato non supportato: usa il modello Excel (.xlsx) o un pacchetto .json.');
+  let X; try { X = await loadSheetJS(); } catch (e) { throw new Error('Non riesco a caricare il lettore Excel (serve la connessione a Internet). Riprova più tardi.'); }
+  const wb = X.read(new Uint8Array(await file.arrayBuffer()), { type:'array', cellDates:true });
+  return workbookToPack(wb);
+}
+const stripMeta = p => JSON.parse(JSON.stringify(p, (k, v) => k === '_src' || k === '_errors' || k === '_revisione' || k === 'k' ? undefined : v));
+function packMessage(head, lines, kind, ok) {
+  $('packPanel').hidden = false; $('packHead').textContent = head;
+  $('packMsg').innerHTML = (ok ? `<p class="okm">${esc(ok)}</p>` : '') + (lines.length ? `<ul>${lines.slice(0, 40).map(l => `<li class="${kind}">${esc(l)}</li>`).join('')}</ul>${lines.length > 40 ? `<p class="note">…e altre ${lines.length - 40} segnalazioni.</p>` : ''}` : '');
+  $('bReset').hidden = !(PACK && PACK !== DEFAULT_PACK);
+  requestAnimationFrame(() => { try { $('packPanel').scrollIntoView({ block:'nearest', behavior:reduceMotion ? 'auto' : 'smooth' }); } catch (err) { /* ignora */ } });
+}
+async function handlePackFile(file) {
+  packMessage('Lettura del file', [], 'w', null); $('packMsg').innerHTML = `<p>Leggo «${esc(file.name)}»…</p>`;
+  let p;
+  try { p = await readPackFile(file); }
+  catch (e) { packMessage('Il modulo non è stato caricato', [e.message], 'e', null); Sound.ui('wrong'); return; }
+  const v = validatePack(p), errors = (p._errors || []).concat(v.errors);
+  if (errors.length) { packMessage(`Il modulo non è stato caricato · ${errors.length} ${errors.length === 1 ? 'errore' : 'errori'} da correggere`, errors, 'e', null); Sound.ui('wrong'); return; }
+  const clean = stripMeta(p); clean._file = file.name;
+  applyPack(clean);
+  try { localStorage.setItem(PACK_KEY, JSON.stringify(clean)); } catch (e) { v.warnings.push('Il browser non consente di ricordare il modulo: al prossimo avvio tornerà il Modulo 1.'); }
+  packMessage('Modulo caricato', v.warnings, 'w', `${MOD.titolo} · ${MOD.nome}: ${TAPPE.length} ${TAPPE.length === 1 ? 'tappa' : 'tappe'}, ${EXAM.length} domande d'esame.`); Sound.ui('item');
+}
+/* Applica un pacchetto già validato: pannelli, oggetti, referenti, schermata iniziale */
+function applyPack(p) {
+  compilePack(p); PACK = p;
+  for (const key of Object.keys(SLOTS)) paintSlot(key, TAPPE.find(t => t.slot === key) || null);
+  if (P.model) { setupObjects(); resetGame(); }
+  refreshTitle();
+}
+function refreshTitle() {
+  $('tLabel').textContent = `${MOD.corso ? MOD.corso + ' · ' : ''}${MOD.titolo} · Stazione Brignole`; $('tSub').textContent = MOD.breve;
+  $('tLede').textContent = MOD.presentazione || `${TAPPE.length} tappe in stazione, con pannelli, referenti, laboratori, quiz ed esame finale.`;
+  $('tPack').innerHTML = `<span>${esc(MOD.titolo)} · rev. ${esc(MOD.rev || '—')}${MOD.data ? ' · ' + esc(MOD.data) : ''}${PACK && PACK._file ? ' · da ' + esc(PACK._file) : ''}</span>${MOD.stato === 'Approvato' ? '<b class="ok">APPROVATO</b>' : '<b class="draft">BOZZA</b>'}`;
+  if (typeof refreshMeta === 'function' && $('mExam')) refreshMeta();
+}
+function initialPack() {
+  try { const s = localStorage.getItem(PACK_KEY); if (s) { const p = JSON.parse(s); const v = validatePack(p); if (!v.errors.length) return p; } } catch (e) { /* uso il modulo predefinito */ }
+  return DEFAULT_PACK;
+}
+$('bLoad').addEventListener('click', () => { Sound.init(); Sound.ui('click'); $('packFile').value = ''; $('packFile').click(); });
+$('bPickAgain').addEventListener('click', () => { $('packFile').value = ''; $('packFile').click(); });
+$('packFile').addEventListener('change', e => { const f = e.target.files && e.target.files[0]; if (f) handlePackFile(f); });
+$('bReset').addEventListener('click', () => { try { localStorage.removeItem(PACK_KEY); } catch (e) { /* ignora */ } applyPack(DEFAULT_PACK); packMessage('Modulo predefinito', [], 'w', `Di nuovo attivo: ${MOD.titolo} · ${MOD.nome}.`); Sound.ui('click'); });
 
 
 /* =========================================================================
@@ -2837,14 +3020,14 @@ function startGame() {
   Sound.init(); Sound.ui('click'); resetGame();
   for (const id of ['title', 'pause', 'tablet', 'inspect', 'lab', 'exam']) $(id).hidden = true;
   $('hud').hidden = false; $('touch').hidden = !isTouch; G.state = 'play'; lockPointer(); updateClock();
-  openDialog([line(ME, 'Brignole, ore 08:30. Primo giorno del corso di Gestione della Circolazione. Il Modulo 1, la normativa di riferimento, oggi si fa qui: in stazione, a servizio aperto. L\'istruttore mi aspetta nell\'atrio.'),
+  openDialog([line(ME, MOD.apertura || `Stazione Brignole, ore 08:30. Oggi si studia il ${MOD.titolo}: ${MOD.nome}. Il referente guida mi aspetta.`),
     line(W('Suggerimento', 'Comandi', 'hint'), isTouch ? 'Stick a sinistra per muoverti, trascina a destra per guardarti intorno, <em>USA</em> per parlare e studiare i pannelli, <em>LIBRO</em> per il libretto con percorso, appunti e mappa.' : '<em>E</em> per parlare e studiare i pannelli, <em>Tab</em> per il libretto dell\'allievo, <em>M</em> per la mappa, <em>F</em> per la torcia. I rombi azzurri segnalano i pannelli da studiare.')]);
 }
 function toTitle() {
   for (const id of ['pause', 'hud', 'touch', 'dialog', 'inspect', 'tablet', 'lab', 'exam']) $(id).hidden = true;
   if (document.pointerLockElement) document.exitPointerLock(); Voice.stop(); resetGame(); G.state = 'title'; $('title').hidden = false; refreshMeta();
 }
-function refreshMeta() { $('mExam').textContent = store.exam ? `${store.exam}/10` : '—'; $('mPass').textContent = store.passed ? 'Ottenuto' : '—'; $('mBest').textContent = store.best ? fmt(store.best) : '—'; }
+function refreshMeta() { const R = PS(); $('mExam').textContent = R.exam ? `${R.exam}/${MOD.domande}` : '—'; $('mPass').textContent = R.passed ? 'Ottenuto' : '—'; $('mBest').textContent = R.best ? fmt(R.best) : '—'; }
 $('bPlay').addEventListener('click', startGame);
 $('bHelp').addEventListener('click', () => { $('helpPanel').hidden = !$('helpPanel').hidden; $('optsPanel').hidden = true; Sound.init(); Sound.ui('click'); });
 $('bOpts').addEventListener('click', () => { $('optsPanel').hidden = !$('optsPanel').hidden; $('helpPanel').hidden = true; Sound.init(); Sound.ui('click'); });
@@ -2875,12 +3058,12 @@ async function boot() {
     await step('Genero texture e materiali…', 22, () => { makeMaterials(); M.trainWin = new THREE.MeshStandardMaterial({ color:0x1a2530, emissive:0xfff0d0, emissiveIntensity:0.35, roughness:0.1, metalness:0.6 }); });
     await step('Costruisco la stazione e i totem del percorso…', 42, () => { buildGrid(); buildProps(scene); buildLearnProps(scene); buildSseDoor(); });
     await step('Accendo luci e segnaletica…', 58, () => { buildLightsAndSigns(scene); for (const f of WORLD.fixtures) f.init = f.state; flushProps(scene); buildShell(scene); buildTrainModel(); });
-    await step('Arrivano referenti e passeggeri…', 76, () => { charGeos(); hqMaterials(); buildAppearance(); buildPlayer(); setupObjects(); G.faceLight = new THREE.PointLight(0xfff0e0, 0, 2.4, 2); scene.add(G.faceLight); resetGame(); });
+    await step('Arrivano referenti e passeggeri…', 76, () => { charGeos(); hqMaterials(); buildAppearance(); buildPlayer(); G.faceLight = new THREE.PointLight(0xfff0e0, 0, 2.4, 2); scene.add(G.faceLight); applyPack(initialPack()); });
     await step('Compilo gli shader…', 92, () => { camera.position.set(50, 1.7, 14); camera.lookAt(56, 1.4, 14); renderer.compile(scene, camera); });
     $('loading').hidden = true; $('title').hidden = false; G.state = 'title'; refreshMeta(); $('bPlay').focus();
   } catch (err) { console.error(err); $('loadMsg').textContent = 'Errore di avvio: ' + err.message + '. Il gioco richiede WebGL.'; }
 }
-window.SGSLearning = { get state() { return G.state; }, photo:(p, l) => { G.photo = p ? [p, l] : null; }, G, P, cam, input, NPCS, TRAIN, TAPPE, OBJS, LAB, EX, DLG, HOSTS, tpState, renderLab, openTablet, renderTablet, closeTablet, closeInspect, insAct, doInteract, studyBoard, runTappa, openGate, startExam, answerExam, checkLab, closeLab, choose, advance,
+window.SGSLearning = { get state() { return G.state; }, photo:(p, l) => { G.photo = p ? [p, l] : null; }, G, P, cam, input, NPCS, TRAIN, get TAPPE() { return TAPPE; }, get HOSTS() { return HOSTS; }, get MOD() { return MOD; }, get EXAM() { return EXAM; }, get PACK() { return PACK; }, DEFAULT_PACK, applyPack, validatePack, OBJS, LAB, EX, DLG, tpState, renderLab, openTablet, renderTablet, closeTablet, closeInspect, insAct, doInteract, studyBoard, runTappa, openGate, startExam, answerExam, checkLab, closeLab, choose, advance,
   get focus() { return G.focus; }, get info() { return { calls:renderer.info.render.calls, tris:renderer.info.render.triangles, npcs:NPCS.filter(n => !n.gone).length }; } };   // accesso per test automatici
 requestAnimationFrame(frame);
 boot();

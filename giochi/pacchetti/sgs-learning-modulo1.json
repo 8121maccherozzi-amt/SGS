@@ -1,0 +1,2155 @@
+{
+ "formato": "sgs-learning",
+ "versione": 1,
+ "modulo": {
+  "id": "M1",
+  "titolo": "Modulo 1",
+  "nome": "Conoscenza sulla normativa di riferimento",
+  "breve": "Normativa di riferimento",
+  "corso": "Corso Gestione della Circolazione",
+  "sottomoduli": [
+   {
+    "codice": "1.1",
+    "titolo": "Quadro normativo nazionale e ANSFISA"
+   },
+   {
+    "codice": "1.2",
+    "titolo": "Principi del SGS e mansioni"
+   }
+  ],
+  "revisione": "0",
+  "data": "2026-09-25",
+  "stato": "Bozza",
+  "approvatoDa": "",
+  "fonti": "Slide «Modulo 1 – Conoscenza sulla normativa di riferimento» (corso abilitazione Gestione della Circolazione); sintesi del Modulo 1 in formato .md",
+  "guida": "istr",
+  "esaminatore": "esam",
+  "domande": 10,
+  "soglia": 7,
+  "allievo": "Allievo · Gestione della Circolazione",
+  "presentazione": "Primo giorno di corso, ma niente aula: la lezione si fa in stazione, con il servizio in corso. Dodici tappe tra atrio, aula, banchina e galleria. A ogni tappa trovi un pannello da studiare, un referente che ti spiega il suo ruolo, un laboratorio e un quiz. Alla fine, l'esame di modulo in aula.",
+  "apertura": "Brignole, ore 08:30. Primo giorno del corso di Gestione della Circolazione. Il Modulo 1, la normativa di riferimento, oggi si fa qui: in stazione, a servizio aperto. L'istruttore mi aspetta nell'atrio.",
+  "guidaSpiegazione": [
+   "Dodici tappe. A ognuna trovi un totem con il pannello da studiare e un referente che ti spiega il suo ruolo, ti propone un laboratorio e due domande. Prima il pannello, poi il referente.",
+   "Le prime tre tappe sono qui con me, in atrio. Poi il Tecnico SGS, il Direttore di Esercizio in aula, e giù in banchina gli altri. Per il cantiere ti serviranno gilet e casco: l'armadietto è in aula. Alla fine, l'esame con la commissione."
+  ]
+ },
+ "referenti": [
+  {
+   "id": "istr",
+   "ruolo": "Istruttore",
+   "struttura": "Sistema di Gestione delle Competenze",
+   "sigla": "IST",
+   "colore": "verde acqua",
+   "divisa": "polo blu",
+   "figura": "F",
+   "capelli": "coda",
+   "coloreCapelli": "castano",
+   "carnagione": 2,
+   "posa": "in piedi",
+   "casco": "no",
+   "saluto": "Benvenuto! Sei dei nostri per il corso di Gestione della Circolazione? Oggi il Modulo 1 lo facciamo qui, in stazione, con il servizio in corso.",
+   "domandaExtra": "",
+   "rispostaExtra": ""
+  },
+  {
+   "id": "tsgs",
+   "ruolo": "Tecnico SGS",
+   "struttura": "Funzione SGA · Sicurezza",
+   "sigla": "SGS",
+   "colore": "verde",
+   "divisa": "camicia bianca",
+   "figura": "M",
+   "capelli": "corti",
+   "coloreCapelli": "nero",
+   "carnagione": 4,
+   "posa": "legge",
+   "casco": "no",
+   "saluto": "Ciao. Io seguo i processi del SGS: rischi, indicatori, documenti. Chiedi pure.",
+   "domandaExtra": "",
+   "rispostaExtra": ""
+  },
+  {
+   "id": "de",
+   "ruolo": "Direttore di Esercizio",
+   "struttura": "DE · Esercizio",
+   "sigla": "DE",
+   "colore": "blu",
+   "divisa": "completo scuro",
+   "figura": "F",
+   "capelli": "caschetto",
+   "coloreCapelli": "nero",
+   "carnagione": 1,
+   "posa": "in piedi",
+   "casco": "no",
+   "saluto": "Buongiorno. Qui in aula facciamo il punto su chi risponde di cosa.",
+   "domandaExtra": "",
+   "rispostaExtra": ""
+  },
+  {
+   "id": "rsgs",
+   "ruolo": "Responsabile SGS",
+   "struttura": "RSGS · Sicurezza",
+   "sigla": "RSGS",
+   "colore": "verde",
+   "divisa": "maglia verde petrolio",
+   "figura": "M",
+   "capelli": "corti",
+   "coloreCapelli": "grigio",
+   "carnagione": 2,
+   "posa": "in piedi",
+   "casco": "no",
+   "saluto": "Buongiorno. Da qui vedo tutta la banchina: è il posto giusto per parlare di sicurezza.",
+   "domandaExtra": "",
+   "rispostaExtra": ""
+  },
+  {
+   "id": "rsgc",
+   "ruolo": "Responsabile SGC",
+   "struttura": "RSGC · Competenze",
+   "sigla": "RSGC",
+   "colore": "verde acqua",
+   "divisa": "maglia bordeaux",
+   "figura": "F",
+   "capelli": "lunghi",
+   "coloreCapelli": "nero",
+   "carnagione": 5,
+   "posa": "legge",
+   "casco": "no",
+   "saluto": "Ciao, benvenuto nel percorso. Le competenze sono la mia materia.",
+   "domandaExtra": "",
+   "rispostaExtra": ""
+  },
+  {
+   "id": "cond",
+   "ruolo": "Agente di condotta",
+   "struttura": "Esercizio MET · in pausa",
+   "sigla": "AdC",
+   "colore": "azzurro",
+   "divisa": "divisa condotta",
+   "figura": "M",
+   "capelli": "ricci",
+   "coloreCapelli": "nero",
+   "carnagione": 6,
+   "posa": "in piedi",
+   "casco": "no",
+   "saluto": "Ciao. Dieci minuti di pausa, poi riprendo il treno. Hai domande?",
+   "domandaExtra": "Com'è andata la segnalazione del near miss?",
+   "rispostaExtra": "L'RSGS mi ha chiamato per capire la dinamica, non per cercare un colpevole. Hanno allungato di un secondo l'avviso sonoro di chiusura porte in quella stazione. Un piccolo cambiamento, nato da una segnalazione."
+  },
+  {
+   "id": "srm",
+   "ruolo": "Referente SRM",
+   "struttura": "MMV · Veicoli e Officina",
+   "sigla": "SRM",
+   "colore": "arancio",
+   "divisa": "lavoro arancio",
+   "figura": "F",
+   "capelli": "chignon",
+   "coloreCapelli": "biondo",
+   "carnagione": 1,
+   "posa": "in piedi",
+   "casco": "no",
+   "saluto": "Buongiorno! Stamattina tre treni riammessi in servizio dopo la manutenzione programmata.",
+   "domandaExtra": "Cosa succede se un treno ha un difetto in linea?",
+   "rispostaExtra": "Se il difetto riguarda la sicurezza, il treno esce dal servizio e rientra in officina. Torna in linea solo quando la gestione flotta lo riammette, con i controlli registrati."
+  },
+  {
+   "id": "mmi",
+   "ruolo": "Referente Infrastruttura",
+   "struttura": "MMI · Manutenzione Infrastrutture",
+   "sigla": "MMI",
+   "colore": "ambra",
+   "divisa": "alta visibilità",
+   "figura": "M",
+   "capelli": "rasati",
+   "coloreCapelli": "castano",
+   "carnagione": 3,
+   "posa": "in piedi",
+   "casco": "sì",
+   "saluto": "Buongiorno. Oltre questo cancello c'è il nostro cantiere.",
+   "domandaExtra": "",
+   "rispostaExtra": ""
+  },
+  {
+   "id": "esam",
+   "ruolo": "Commissione d'esame",
+   "struttura": "Esaminatore · SGC",
+   "sigla": "ESA",
+   "colore": "viola",
+   "divisa": "giacca grigia",
+   "figura": "M",
+   "capelli": "rasati",
+   "coloreCapelli": "grigio",
+   "carnagione": 3,
+   "posa": "legge",
+   "casco": "no",
+   "saluto": "Buongiorno. Sono qui per la prova di fine modulo.",
+   "domandaExtra": "Chi nomina la commissione?",
+   "rispostaExtra": "Le commissioni d'esame le nomina il Responsabile del Sistema di Gestione delle Competenze. Questa di oggi è una simulazione: l'esame vero lo farai con la commissione ufficiale."
+  }
+ ],
+ "tappe": [
+  {
+   "n": 1,
+   "id": "mappa",
+   "sotto": "1.1",
+   "titolo": "La mappa della sicurezza",
+   "slot": "A1",
+   "referente": "istr",
+   "tipo": "standard",
+   "grafica": "dedicata",
+   "dedicata": "M1-01",
+   "modello": "sequenza",
+   "notaPannello": "Dal «rispetta la regola» al «governa il rischio»: le regole restano, ma sono scelte, verificate e migliorate in base ai rischi.",
+   "elementi": [
+    {
+     "titolo": "DPR 753/1980",
+     "testo": "Norme di polizia, sicurezza e regolarità dell'esercizio. Impostazione prescrittiva e frammentata.",
+     "testo2": ""
+    },
+    {
+     "titolo": "D.L. 109/2018",
+     "testo": "«Decreto Genova»: istituisce ANSFISA.",
+     "testo2": ""
+    },
+    {
+     "titolo": "ANSFISA",
+     "testo": "Agenzia Nazionale per la Sicurezza delle Ferrovie e delle Infrastrutture Stradali e Autostradali.",
+     "testo2": ""
+    },
+    {
+     "titolo": "AdS + SGS",
+     "testo": "L'Esercente opera con un'Autorizzazione di Sicurezza. Requisito chiave: un SGS attuato ed efficace.",
+     "testo2": ""
+    }
+   ],
+   "punti": [
+    "Il DPR 753/1980 è la norma storica su polizia, sicurezza e regolarità dell'esercizio: impostazione prescrittiva e frammentata.",
+    "Il D.L. 109/2018, il «Decreto Genova», istituisce ANSFISA.",
+    "L'Esercente opera solo con un'Autorizzazione di Sicurezza (AdS). Il requisito chiave è un SGS attuato, monitorato e migliorato nel tempo."
+   ],
+   "nota": "La slide parla di SGS «certificato». Più precisamente il SGS non riceve una certificazione di terza parte: è ANSFISA a valutarne la conformità e l'attuazione quando rilascia e mantiene l'AdS. Inoltre il DPR 753/1980 non è abrogato: resta in vigore per le parti non superate dalle norme successive. Il quadro vigente comprende anche atti successivi e provvedimenti ANSFISA: l'elenco aggiornato lo tiene l'RSGS.",
+   "spiegazione": [
+    "Per decenni il riferimento è stato il DPR 753 del 1980: regole prescrittive, sparse in tante norme. Dopo il crollo del ponte Morandi, il D.L. 109/2018, il «Decreto Genova», ha istituito <em>ANSFISA</em>.",
+    "Oggi un esercente come AMT può esercitare solo con un'<em>Autorizzazione di Sicurezza</em>, e al centro dell'autorizzazione c'è il suo <em>Sistema di Gestione della Sicurezza</em>. Non basta scriverlo: va attuato e migliorato."
+   ],
+   "labs": [
+    {
+     "tipo": "ordina",
+     "titolo": "Metti in ordine l'evoluzione",
+     "istruzioni": "Tocca le carte nell'ordine cronologico e logico, dalla più antica all'attuale.",
+     "opzioni": [],
+     "voci": [
+      {
+       "testo": "DPR 753/1980: norme prescrittive e frammentate",
+       "risposta": 1,
+       "spiegazione": ""
+      },
+      {
+       "testo": "D.L. 109/2018 «Decreto Genova»: nasce ANSFISA",
+       "risposta": 2,
+       "spiegazione": ""
+      },
+      {
+       "testo": "ANSFISA rilascia l'Autorizzazione di Sicurezza all'Esercente",
+       "risposta": 3,
+       "spiegazione": ""
+      },
+      {
+       "testo": "L'Esercente mantiene l'AdS attuando e migliorando il SGS",
+       "risposta": 4,
+       "spiegazione": ""
+      }
+     ]
+    }
+   ],
+   "quiz": [
+    {
+     "domanda": "Quale atto ha istituito ANSFISA?",
+     "corretta": "Il D.L. 109/2018, il «Decreto Genova»",
+     "errate": [
+      "Il DPR 753/1980",
+      "Un regolamento interno aziendale"
+     ],
+     "spiegazione": "Il D.L. 109/2018 ha istituito l'Agenzia. Il DPR 753/1980 è la norma storica su polizia, sicurezza e regolarità dell'esercizio.",
+     "fonte": "Slide 3"
+    },
+    {
+     "domanda": "Che cosa serve all'Esercente per operare nel nuovo quadro?",
+     "corretta": "Un'Autorizzazione di Sicurezza fondata su un SGS attuato ed efficace",
+     "errate": [
+      "Solo il rispetto del DPR 753/1980",
+      "Una certificazione di qualità ISO 9001"
+     ],
+     "spiegazione": "Senza AdS non si esercisce. Il SGS non basta averlo scritto: va attuato, monitorato e migliorato. Una certificazione di qualità non lo sostituisce.",
+     "fonte": "Slide 3"
+    }
+   ],
+   "sopralluogo": []
+  },
+  {
+   "n": 2,
+   "id": "ansfisa",
+   "sotto": "1.1",
+   "titolo": "I compiti di ANSFISA",
+   "slot": "A2",
+   "referente": "istr",
+   "tipo": "standard",
+   "grafica": "dedicata",
+   "dedicata": "M1-02",
+   "modello": "colonne",
+   "notaPannello": "ANSFISA sorveglia dall'esterno. Il controllo interno di ogni giorno (monitoraggio e audit) resta all'Esercente, con il suo SGS.",
+   "elementi": [
+    {
+     "titolo": "Certificazione e autorizzazione",
+     "testo": "Rilascia certificazioni e autorizzazioni all'esercizio di impianti e sistemi di trasporto.",
+     "testo2": ""
+    },
+    {
+     "titolo": "Supervisione",
+     "testo": "Verifica che gli Esercenti rispettino le norme e siano coerenti con gli obiettivi di sicurezza prefissati.",
+     "testo2": ""
+    },
+    {
+     "titolo": "Regolamentazione",
+     "testo": "Emana disposizioni a carattere normativo: circolari, note, decreti.",
+     "testo2": ""
+    }
+   ],
+   "punti": [
+    "Certificazione e autorizzazione: rilascia certificazioni e autorizzazioni all'esercizio di impianti e sistemi di trasporto.",
+    "Supervisione: verifica che gli Esercenti rispettino le norme e siano coerenti con gli obiettivi di sicurezza prefissati.",
+    "Regolamentazione: emana disposizioni a carattere normativo (circolari, note, decreti)."
+   ],
+   "nota": "Attenzione a non confondere i piani: ANSFISA supervisiona dall'esterno, ma il monitoraggio continuo e gli audit interni sono compiti dell'Esercente, svolti attraverso il suo SGS.",
+   "spiegazione": [
+    "ANSFISA fa tre mestieri: <em>autorizza</em>, <em>sorveglia</em> e <em>regola</em>. Rilascia autorizzazioni, verifica sul campo che gli esercenti rispettino le norme ed emana circolari, note e decreti.",
+    "Per noi significa una cosa sola: dobbiamo poter dimostrare, con evidenze, che il sistema funziona. Anche quando nessuno ci controlla."
+   ],
+   "labs": [
+    {
+     "tipo": "abbina",
+     "titolo": "Chi fa cosa, per ANSFISA",
+     "istruzioni": "Associa ogni attività al compito dell'Agenzia.",
+     "opzioni": [
+      "Certificazione e autorizzazione",
+      "Supervisione",
+      "Regolamentazione"
+     ],
+     "voci": [
+      {
+       "testo": "Rilascio dell'Autorizzazione di Sicurezza all'Esercente",
+       "risposta": "Certificazione e autorizzazione",
+       "spiegazione": ""
+      },
+      {
+       "testo": "Verifica presso l'Esercente del rispetto delle norme",
+       "risposta": "Supervisione",
+       "spiegazione": ""
+      },
+      {
+       "testo": "Emanazione di una circolare con nuove disposizioni",
+       "risposta": "Regolamentazione",
+       "spiegazione": ""
+      },
+      {
+       "testo": "Controllo di coerenza con gli obiettivi di sicurezza prefissati",
+       "risposta": "Supervisione",
+       "spiegazione": ""
+      },
+      {
+       "testo": "Autorizzazione all'esercizio di un nuovo impianto",
+       "risposta": "Certificazione e autorizzazione",
+       "spiegazione": ""
+      },
+      {
+       "testo": "Nota con indicazioni applicative per gli Esercenti",
+       "risposta": "Regolamentazione",
+       "spiegazione": ""
+      }
+     ]
+    }
+   ],
+   "quiz": [
+    {
+     "domanda": "Una circolare ANSFISA con nuove disposizioni rientra nella…",
+     "corretta": "Regolamentazione",
+     "errate": [
+      "Supervisione",
+      "Certificazione"
+     ],
+     "spiegazione": "Circolari, note e decreti sono disposizioni a carattere normativo: è la funzione di regolamentazione.",
+     "fonte": "Slide 4"
+    },
+    {
+     "domanda": "Chi svolge il controllo interno quotidiano sul funzionamento del SGS?",
+     "corretta": "L'Esercente, con monitoraggio e audit interni",
+     "errate": [
+      "ANSFISA, presente in ogni stazione",
+      "Nessuno: basta avere l'AdS"
+     ],
+     "spiegazione": "ANSFISA supervisiona dall'esterno; il monitoraggio continuo e gli audit interni restano all'Esercente.",
+     "fonte": "Slide 4"
+    }
+   ],
+   "sopralluogo": []
+  },
+  {
+   "n": 3,
+   "id": "sgs",
+   "sotto": "1.2",
+   "titolo": "Che cos'è il SGS",
+   "slot": "A3",
+   "referente": "istr",
+   "tipo": "standard",
+   "grafica": "dedicata",
+   "dedicata": "M1-03",
+   "modello": "colonne",
+   "notaPannello": "Ambito indicato dal corso: sistemi a guida vincolata (metropolitana, cremagliera Principe–Granarolo, linea filoviaria*). *Filovia: perimetro in corso di definizione.",
+   "elementi": [
+    {
+     "titolo": "Organizzazione",
+     "testo": "Struttura chiara, ruoli definiti, responsabilità assegnate.",
+     "testo2": ""
+    },
+    {
+     "titolo": "Procedure",
+     "testo": "Regole operative standardizzate per l'esercizio e la manutenzione.",
+     "testo2": ""
+    },
+    {
+     "titolo": "Risorse",
+     "testo": "Personale formato, mezzi sicuri, infrastrutture adeguate.",
+     "testo2": ""
+    }
+   ],
+   "punti": [
+    "Organizzazione: struttura chiara, ruoli definiti, responsabilità assegnate.",
+    "Procedure: regole operative standardizzate per l'esercizio e la manutenzione.",
+    "Risorse: personale formato, mezzi sicuri, infrastrutture adeguate.",
+    "Ambito indicato dal corso: sistemi a guida vincolata (metropolitana, cremagliera Principe–Granarolo, linea filoviaria)."
+   ],
+   "nota": "Per la linea filoviaria l'inclusione nel perimetro del SGS è ancora in corso di definizione: verifica il perimetro vigente con l'RSGS prima di darla per acquisita. La Ferrovia Genova–Casella non rientra nel perimetro SGS TGV trattato nel corso.",
+   "spiegazione": [
+    "Il SGS è un ingranaggio a tre ruote: <em>organizzazione</em>, cioè chi fa cosa e con quali responsabilità; <em>procedure</em>, cioè come si fa; <em>risorse</em>, cioè persone formate, mezzi e infrastrutture adeguati.",
+    "Se una ruota si ferma, si ferma tutto: una procedura perfetta con personale non formato non protegge nessuno."
+   ],
+   "labs": [
+    {
+     "tipo": "abbina",
+     "titolo": "Organizzazione, procedure o risorse?",
+     "istruzioni": "Associa ogni elemento a una delle tre ruote del SGS.",
+     "opzioni": [
+      "Organizzazione",
+      "Procedure",
+      "Risorse"
+     ],
+     "voci": [
+      {
+       "testo": "Organigramma con ruoli e deleghe",
+       "risposta": "Organizzazione",
+       "spiegazione": ""
+      },
+      {
+       "testo": "Istruzione operativa per la messa in servizio dei treni",
+       "risposta": "Procedure",
+       "spiegazione": ""
+      },
+      {
+       "testo": "Personale formato e abilitato",
+       "risposta": "Risorse",
+       "spiegazione": ""
+      },
+      {
+       "testo": "Veicoli manutenuti e sicuri",
+       "risposta": "Risorse",
+       "spiegazione": ""
+      },
+      {
+       "testo": "Responsabilità assegnate per iscritto",
+       "risposta": "Organizzazione",
+       "spiegazione": ""
+      },
+      {
+       "testo": "Piano di manutenzione con cadenze e controlli",
+       "risposta": "Procedure",
+       "spiegazione": ""
+      }
+     ]
+    }
+   ],
+   "quiz": [
+    {
+     "domanda": "Su quali tre elementi si regge il SGS?",
+     "corretta": "Organizzazione, procedure, risorse",
+     "errate": [
+      "Norme, sanzioni, controlli",
+      "Treni, stazioni, gallerie"
+     ],
+     "spiegazione": "Sono le tre ruote della slide: struttura e responsabilità, regole operative, persone e mezzi adeguati.",
+     "fonte": "Slide 6"
+    },
+    {
+     "domanda": "Secondo il corso, a quali sistemi si applica la mappa organizzativa del SGS?",
+     "corretta": "Ai sistemi a guida vincolata: metropolitana, cremagliera Principe–Granarolo, filovia",
+     "errate": [
+      "Solo agli autobus urbani",
+      "A tutti i servizi aziendali, autobus compresi"
+     ],
+     "spiegazione": "È l'ambito indicato dalle slide. Per la filovia ricorda la nota: il perimetro è in corso di definizione.",
+     "fonte": "Slide 6"
+    }
+   ],
+   "sopralluogo": []
+  },
+  {
+   "n": 4,
+   "id": "proattivo",
+   "sotto": "1.2",
+   "titolo": "Reattivo o proattivo",
+   "slot": "A4",
+   "referente": "tsgs",
+   "tipo": "standard",
+   "grafica": "dedicata",
+   "dedicata": "M1-04",
+   "modello": "confronto",
+   "notaPannello": "",
+   "elementi": [
+    {
+     "titolo": "",
+     "testo": "Approccio reattivo · il passato",
+     "testo2": "Proattivo / risk-based · il SGS"
+    },
+    {
+     "titolo": "Mantra",
+     "testo": "Risolviamo il problema dopo che si è rotto.",
+     "testo2": "Valutiamo i rischi prima che accada l'evento."
+    },
+    {
+     "titolo": "Azione",
+     "testo": "Applicazione cieca delle regole (prescrittivo).",
+     "testo2": "Analisi continua del sistema e dei pericoli."
+    },
+    {
+     "titolo": "Focus",
+     "testo": "Trovare il colpevole (errore umano).",
+     "testo2": "Capire perché il sistema ha fallito (Just Culture)."
+    },
+    {
+     "titolo": "Manutenzione",
+     "testo": "Interventi a guasto.",
+     "testo2": "Preventiva e costantemente monitorata."
+    }
+   ],
+   "punti": [
+    "Reattivo: si risolve dopo il guasto, si applicano le regole senza chiedersi perché, si cerca il colpevole, si interviene a guasto.",
+    "Proattivo (risk-based): si valutano i rischi prima dell'evento, si analizza di continuo il sistema, si capisce perché ha fallito, la manutenzione è preventiva e monitorata."
+   ],
+   "nota": "«Proattivo» non significa che le regole diventano facoltative: significa conoscere i rischi che ogni regola controlla, verificarne l'efficacia e migliorarla.",
+   "spiegazione": [
+    "Il vecchio modo di lavorare era <em>reattivo</em>: si rompe, si ripara, si cerca il colpevole. Il SGS ci chiede di essere <em>proattivi</em>: guardare i dati, valutare i rischi prima che l'evento accada, capire perché il sistema ha lasciato passare l'errore."
+   ],
+   "labs": [
+    {
+     "tipo": "abbina",
+     "titolo": "Da che parte sta?",
+     "istruzioni": "Per ogni frase scegli l'approccio.",
+     "opzioni": [
+      "Reattivo",
+      "Proattivo"
+     ],
+     "voci": [
+      {
+       "testo": "«Risolviamo il problema dopo che si è rotto»",
+       "risposta": "Reattivo",
+       "spiegazione": ""
+      },
+      {
+       "testo": "«Valutiamo i rischi prima che accada l'evento»",
+       "risposta": "Proattivo",
+       "spiegazione": ""
+      },
+      {
+       "testo": "Applicazione cieca delle regole",
+       "risposta": "Reattivo",
+       "spiegazione": ""
+      },
+      {
+       "testo": "Analisi continua del sistema e dei pericoli",
+       "risposta": "Proattivo",
+       "spiegazione": ""
+      },
+      {
+       "testo": "Cerchiamo il colpevole",
+       "risposta": "Reattivo",
+       "spiegazione": ""
+      },
+      {
+       "testo": "Capiamo perché il sistema ha fallito",
+       "risposta": "Proattivo",
+       "spiegazione": ""
+      },
+      {
+       "testo": "Interveniamo solo a guasto",
+       "risposta": "Reattivo",
+       "spiegazione": ""
+      },
+      {
+       "testo": "Manutenzione preventiva e monitorata",
+       "risposta": "Proattivo",
+       "spiegazione": ""
+      }
+     ]
+    }
+   ],
+   "quiz": [
+    {
+     "domanda": "Porte di un treno con guasti ricorrenti: qual è la risposta proattiva?",
+     "corretta": "Analizzo i dati dei guasti e intervengo prima del prossimo",
+     "errate": [
+      "Aspetto il prossimo guasto e riparo",
+      "Cerco chi ha chiuso male la porta"
+     ],
+     "spiegazione": "Proattivo vuol dire usare i dati per prevenire, non attendere il prossimo evento né cercare un colpevole.",
+     "fonte": "Slide 7"
+    },
+    {
+     "domanda": "Nel modello proattivo, le regole…",
+     "corretta": "si applicano sapendo quali rischi controllano, e si migliorano",
+     "errate": [
+      "si applicano senza chiedersi il perché",
+      "diventano facoltative"
+     ],
+     "spiegazione": "Le regole restano obbligatorie: cambia il modo di gestirle, collegato ai rischi e verificato nel tempo.",
+     "fonte": "Slide 7"
+    }
+   ],
+   "sopralluogo": []
+  },
+  {
+   "n": 5,
+   "id": "pdca",
+   "sotto": "1.2",
+   "titolo": "Il ciclo PDCA",
+   "slot": "A5",
+   "referente": "tsgs",
+   "tipo": "standard",
+   "grafica": "dedicata",
+   "dedicata": "M1-05",
+   "modello": "ciclo",
+   "notaPannello": "La sicurezza non si ferma mai",
+   "elementi": [
+    {
+     "titolo": "Plan",
+     "testo": "Valutazione dei rischi: analisi preventiva degli scenari.",
+     "testo2": ""
+    },
+    {
+     "titolo": "Do",
+     "testo": "Attuazione delle misure: applicazione delle procedure operative.",
+     "testo2": ""
+    },
+    {
+     "titolo": "Check",
+     "testo": "Monitoraggio e audit: controllo dell'efficacia sul campo.",
+     "testo2": ""
+    },
+    {
+     "titolo": "Act",
+     "testo": "Miglioramento: correzione delle anomalie e aggiornamento del SGS.",
+     "testo2": ""
+    }
+   ],
+   "punti": [
+    "Plan: valutazione dei rischi, analisi preventiva degli scenari.",
+    "Do: attuazione delle misure, applicazione delle procedure operative.",
+    "Check: monitoraggio e audit, controllo dell'efficacia sul campo.",
+    "Act: miglioramento, correzione delle anomalie e aggiornamento del SGS. Poi il ciclo ricomincia."
+   ],
+   "nota": "",
+   "spiegazione": [
+    "Il SGS vive in un ciclo che non si chiude mai: <em>Plan</em>, valuto i rischi; <em>Do</em>, applico le misure; <em>Check</em>, verifico sul campo con monitoraggio e audit; <em>Act</em>, correggo e aggiorno. E si riparte."
+   ],
+   "labs": [
+    {
+     "tipo": "ordina",
+     "titolo": "Ricostruisci il ciclo",
+     "istruzioni": "Metti le fasi in sequenza, partendo dalla pianificazione.",
+     "opzioni": [],
+     "voci": [
+      {
+       "testo": "Plan · valutazione dei rischi",
+       "risposta": 1,
+       "spiegazione": ""
+      },
+      {
+       "testo": "Do · attuazione delle misure e delle procedure",
+       "risposta": 2,
+       "spiegazione": ""
+      },
+      {
+       "testo": "Check · monitoraggio e audit sul campo",
+       "risposta": 3,
+       "spiegazione": ""
+      },
+      {
+       "testo": "Act · correzione e aggiornamento del SGS",
+       "risposta": 4,
+       "spiegazione": ""
+      }
+     ]
+    },
+    {
+     "tipo": "abbina",
+     "titolo": "In quale fase?",
+     "istruzioni": "Associa ogni attività alla sua fase.",
+     "opzioni": [
+      "Plan",
+      "Do",
+      "Check",
+      "Act"
+     ],
+     "voci": [
+      {
+       "testo": "Analisi preventiva degli scenari di pericolo",
+       "risposta": "Plan",
+       "spiegazione": ""
+      },
+      {
+       "testo": "Applicazione delle procedure operative",
+       "risposta": "Do",
+       "spiegazione": ""
+      },
+      {
+       "testo": "Audit sul campo",
+       "risposta": "Check",
+       "spiegazione": ""
+      },
+      {
+       "testo": "Correzione di un'anomalia e revisione della procedura",
+       "risposta": "Act",
+       "spiegazione": ""
+      },
+      {
+       "testo": "Monitoraggio degli indicatori di sicurezza",
+       "risposta": "Check",
+       "spiegazione": ""
+      }
+     ]
+    }
+   ],
+   "quiz": [
+    {
+     "domanda": "Un audit sul campo rientra nella fase…",
+     "corretta": "Check",
+     "errate": [
+      "Plan",
+      "Act"
+     ],
+     "spiegazione": "Monitoraggio e audit verificano l'efficacia sul campo: è la fase di verifica.",
+     "fonte": "Slide 8"
+    },
+    {
+     "domanda": "Dopo la fase Act, il ciclo…",
+     "corretta": "ricomincia: la sicurezza non si ferma mai",
+     "errate": [
+      "si chiude definitivamente",
+      "passa ad ANSFISA"
+     ],
+     "spiegazione": "È un ciclo di miglioramento continuo: ogni correzione diventa l'ingresso della pianificazione successiva.",
+     "fonte": "Slide 8"
+    }
+   ],
+   "sopralluogo": []
+  },
+  {
+   "n": 6,
+   "id": "organizzazione",
+   "sotto": "1.2",
+   "titolo": "Organizzazione e pilastri",
+   "slot": "W1",
+   "referente": "de",
+   "tipo": "standard",
+   "grafica": "dedicata",
+   "dedicata": "M1-06",
+   "modello": "elenco",
+   "notaPannello": "Responsabilità indipendenti e separate: collaborano, ma si controllano a vicenda. La responsabilità ultima resta dell'Esercente.",
+   "elementi": [
+    {
+     "titolo": "DE · Direttore di Esercizio",
+     "testo": "Operatività e circolazione.",
+     "testo2": ""
+    },
+    {
+     "titolo": "RSGS · Responsabile SGS",
+     "testo": "Garanzia e controllo della sicurezza.",
+     "testo2": ""
+    },
+    {
+     "titolo": "Manutenzione · SRM e Resp. Infrastruttura",
+     "testo": "Sicurezza di veicoli e impianti.",
+     "testo2": ""
+    },
+    {
+     "titolo": "RSGC · Responsabile SGC",
+     "testo": "Acquisizione e mantenimento delle competenze.",
+     "testo2": ""
+    }
+   ],
+   "punti": [
+    "Nell'organigramma per funzioni del Servizio su Ferro (FER), SGS (SGA) e SGC (SGM) sono funzioni collegate direttamente al Servizio.",
+    "Metro (MET): esercizio (DCT), manutenzione infrastrutture (MMI), segnalamento e impianti ausiliari (MMC), veicoli e officina (MMV).",
+    "Quattro pilastri dell'Esercente: DE (operatività e circolazione), RSGS (garanzia e controllo), Manutenzione (SRM e Resp. Infrastruttura), RSGC (competenze).",
+    "Responsabilità indipendenti e separate, per garantire il controllo reciproco. La responsabilità ultima resta dell'Esercente."
+   ],
+   "nota": "Il pannello riporta solo sigle e funzioni: gli organigrammi delle slide contengono nominativi, che non servono per l'apprendimento e cambiano nel tempo. Fai sempre riferimento all'organigramma vigente.",
+   "spiegazione": [
+    "Le slide mostrano due organigrammi. Quello per funzioni del <em>Servizio su Ferro</em> è il più utile per voi: la Metro con esercizio e manutenzioni, e accanto il Sistema di Gestione della Sicurezza e quello delle Competenze.",
+    "Poi ci sono i <em>quattro pilastri</em>: io, Direttore di Esercizio; l'RSGS; la manutenzione con SRM e responsabili dell'infrastruttura; il Responsabile SGC. Collaboriamo, ma nessuno controlla se stesso."
+   ],
+   "labs": [
+    {
+     "tipo": "abbina",
+     "titolo": "Sigle del Servizio su Ferro",
+     "istruzioni": "Associa ogni sigla alla sua funzione.",
+     "opzioni": [
+      "Sistema di Gestione della Sicurezza",
+      "Sistema di Gestione delle Competenze",
+      "Esercizio e Manutenzione Metro",
+      "Manut. Veicoli e Officina",
+      "Manut. Segnalamento e Imp. Ausiliari",
+      "Manut. Infrastrutture"
+     ],
+     "voci": [
+      {
+       "testo": "SGA",
+       "risposta": "Sistema di Gestione della Sicurezza",
+       "spiegazione": ""
+      },
+      {
+       "testo": "SGM",
+       "risposta": "Sistema di Gestione delle Competenze",
+       "spiegazione": ""
+      },
+      {
+       "testo": "MET",
+       "risposta": "Esercizio e Manutenzione Metro",
+       "spiegazione": ""
+      },
+      {
+       "testo": "MMV",
+       "risposta": "Manut. Veicoli e Officina",
+       "spiegazione": ""
+      },
+      {
+       "testo": "MMC",
+       "risposta": "Manut. Segnalamento e Imp. Ausiliari",
+       "spiegazione": ""
+      },
+      {
+       "testo": "MMI",
+       "risposta": "Manut. Infrastrutture",
+       "spiegazione": ""
+      }
+     ]
+    },
+    {
+     "tipo": "abbina",
+     "titolo": "I quattro pilastri",
+     "istruzioni": "Associa ogni ambito di responsabilità al suo pilastro.",
+     "opzioni": [
+      "DE",
+      "RSGS",
+      "SRM e Resp. Infrastruttura",
+      "RSGC"
+     ],
+     "voci": [
+      {
+       "testo": "Operatività e circolazione",
+       "risposta": "DE",
+       "spiegazione": ""
+      },
+      {
+       "testo": "Garanzia e controllo della sicurezza",
+       "risposta": "RSGS",
+       "spiegazione": ""
+      },
+      {
+       "testo": "Sicurezza di veicoli e impianti",
+       "risposta": "SRM e Resp. Infrastruttura",
+       "spiegazione": ""
+      },
+      {
+       "testo": "Acquisizione e mantenimento delle competenze",
+       "risposta": "RSGC",
+       "spiegazione": ""
+      }
+     ]
+    }
+   ],
+   "quiz": [
+    {
+     "domanda": "Perché i quattro ruoli hanno responsabilità separate?",
+     "corretta": "Per garantire il controllo reciproco",
+     "errate": [
+      "Per ridurre il numero di riunioni",
+      "Perché lavorano per aziende diverse"
+     ],
+     "spiegazione": "Chi governa la produzione non deve essere anche chi la controlla: la separazione rende il controllo credibile.",
+     "fonte": "Slide 9-11"
+    },
+    {
+     "domanda": "Chi ha la responsabilità ultima del sistema?",
+     "corretta": "L'Esercente",
+     "errate": [
+      "ANSFISA",
+      "Il singolo conducente"
+     ],
+     "spiegazione": "Le funzioni si dividono i compiti, ma la responsabilità ultima del sistema resta all'Esercente.",
+     "fonte": "Slide 9-11"
+    }
+   ],
+   "sopralluogo": []
+  },
+  {
+   "n": 7,
+   "id": "de",
+   "sotto": "1.2",
+   "titolo": "Il Direttore di Esercizio",
+   "slot": "W2",
+   "referente": "de",
+   "tipo": "standard",
+   "grafica": "dedicata",
+   "dedicata": "M1-07",
+   "modello": "scheda",
+   "notaPannello": "",
+   "elementi": [
+    {
+     "titolo": "Mission",
+     "testo": "Il capo operativo: responsabile della sicurezza e della regolarità dell'esercizio del sistema di trasporto.",
+     "testo2": ""
+    },
+    {
+     "titolo": "",
+     "testo": "Autorizza la circolazione e le operazioni.",
+     "testo2": ""
+    },
+    {
+     "titolo": "",
+     "testo": "Garantisce la conformità alle disposizioni ANSFISA.",
+     "testo2": ""
+    },
+    {
+     "titolo": "",
+     "testo": "Emette le certificazioni annuali di manutenzione.",
+     "testo2": ""
+    },
+    {
+     "titolo": "Interfaccia con il conducente",
+     "testo": "È la massima autorità sulla linea. Nota: ruolo incompatibile con quello di RSGS.",
+     "testo2": ""
+    }
+   ],
+   "punti": [
+    "Il capo operativo: responsabile della sicurezza e della regolarità dell'esercizio.",
+    "Autorizza la circolazione e le operazioni; garantisce la conformità alle disposizioni ANSFISA; emette le certificazioni annuali di manutenzione (come da slide).",
+    "Per il conducente è la massima autorità sulla linea. Ruolo incompatibile con quello di RSGS."
+   ],
+   "nota": "La slide scrive che l'incompatibilità DE/RSGS è «per legge»: nel materiale ufficiale va citata la fonte puntuale (disposizioni ANSFISA e atti di nomina). Anche la «certificazione annuale di manutenzione» va ricondotta alla procedura aziendale che la disciplina.",
+   "spiegazione": [
+    "Io rispondo della <em>sicurezza e regolarità dell'esercizio</em>: autorizzo la circolazione e le operazioni e garantisco che l'esercizio sia conforme alle disposizioni ANSFISA.",
+    "Una cosa che dovete ricordare: il mio ruolo è <em>incompatibile</em> con quello di RSGS. Chi decide come si esercisce non può essere anche chi ne controlla la sicurezza."
+   ],
+   "labs": [
+    {
+     "tipo": "scelta",
+     "titolo": "Le responsabilità del DE",
+     "istruzioni": "Seleziona tutte e sole le responsabilità attribuite al DE nel corso.",
+     "opzioni": [],
+     "voci": [
+      {
+       "testo": "Autorizza la circolazione e le operazioni",
+       "risposta": "Sì",
+       "spiegazione": ""
+      },
+      {
+       "testo": "Garantisce la conformità alle disposizioni ANSFISA",
+       "risposta": "Sì",
+       "spiegazione": ""
+      },
+      {
+       "testo": "Emette le certificazioni annuali di manutenzione",
+       "risposta": "Sì",
+       "spiegazione": ""
+      },
+      {
+       "testo": "Conduce gli audit interni del SGS",
+       "risposta": "No",
+       "spiegazione": "È un compito dell'RSGS."
+      },
+      {
+       "testo": "Nomina le commissioni d'esame",
+       "risposta": "No",
+       "spiegazione": "È un compito del Responsabile SGC."
+      },
+      {
+       "testo": "Esegue le riparazioni in officina",
+       "risposta": "No",
+       "spiegazione": "È la funzione di esecuzione dell'SRM."
+      }
+     ]
+    }
+   ],
+   "quiz": [
+    {
+     "domanda": "Il DE può ricoprire anche il ruolo di RSGS?",
+     "corretta": "No, i due ruoli sono incompatibili",
+     "errate": [
+      "Sì, se l'azienda è piccola",
+      "Sì, con una delega scritta"
+     ],
+     "spiegazione": "Il controllo della sicurezza deve essere indipendente da chi governa la produzione.",
+     "fonte": "Slide 12"
+    },
+    {
+     "domanda": "Per il conducente, il DE è…",
+     "corretta": "la massima autorità sulla linea",
+     "errate": [
+      "un consulente esterno",
+      "il responsabile delle abilitazioni"
+     ],
+     "spiegazione": "È il capo operativo dell'esercizio. Le abilitazioni sono gestite dal Sistema di Gestione delle Competenze.",
+     "fonte": "Slide 12"
+    }
+   ],
+   "sopralluogo": []
+  },
+  {
+   "n": 8,
+   "id": "rsgs",
+   "sotto": "1.2",
+   "titolo": "Il Responsabile del SGS",
+   "slot": "P1",
+   "referente": "rsgs",
+   "tipo": "standard",
+   "grafica": "dedicata",
+   "dedicata": "M1-08",
+   "modello": "scheda",
+   "notaPannello": "",
+   "elementi": [
+    {
+     "titolo": "Mission",
+     "testo": "L'architetto e il controllore: assicura che i processi di sicurezza siano predisposti, attuati e tenuti aggiornati.",
+     "testo2": ""
+    },
+    {
+     "titolo": "",
+     "testo": "Totalmente indipendente dalle pressioni della produzione e della circolazione.",
+     "testo2": ""
+    },
+    {
+     "titolo": "",
+     "testo": "Gestisce la valutazione dei rischi (risk assessment).",
+     "testo2": ""
+    },
+    {
+     "titolo": "",
+     "testo": "Monitora le prestazioni e conduce gli audit.",
+     "testo2": ""
+    },
+    {
+     "titolo": "Interfaccia con il conducente",
+     "testo": "Raccoglie i dati su inconvenienti e near miss per migliorare il sistema, non per punire.",
+     "testo2": ""
+    }
+   ],
+   "punti": [
+    "L'architetto e il controllore: assicura che i processi di sicurezza siano predisposti, attuati e tenuti aggiornati.",
+    "Indipendente dalle pressioni della produzione e della circolazione.",
+    "Gestisce la valutazione dei rischi, monitora le prestazioni e conduce gli audit.",
+    "Raccoglie i dati su inconvenienti e near miss per migliorare il sistema, non per punire."
+   ],
+   "nota": "",
+   "spiegazione": [
+    "Il mio lavoro è progettare e controllare: che i processi di sicurezza esistano, siano applicati e restino aggiornati. Per farlo devo essere <em>indipendente</em> da orari, produzione e circolazione.",
+    "Da voi mi servono soprattutto le <em>segnalazioni</em>, anche dei quasi-incidenti. Non servono a punire: servono a vedere i rischi prima che diventino incidenti."
+   ],
+   "labs": [
+    {
+     "tipo": "scelta",
+     "titolo": "Che cosa fa l'RSGS?",
+     "istruzioni": "Seleziona tutte e sole le responsabilità dell'RSGS.",
+     "opzioni": [],
+     "voci": [
+      {
+       "testo": "È indipendente dalle pressioni della produzione",
+       "risposta": "Sì",
+       "spiegazione": ""
+      },
+      {
+       "testo": "Gestisce la valutazione dei rischi",
+       "risposta": "Sì",
+       "spiegazione": ""
+      },
+      {
+       "testo": "Monitora le prestazioni e conduce gli audit",
+       "risposta": "Sì",
+       "spiegazione": ""
+      },
+      {
+       "testo": "Raccoglie i near miss per migliorare, non per punire",
+       "risposta": "Sì",
+       "spiegazione": ""
+      },
+      {
+       "testo": "Autorizza la partenza dei treni",
+       "risposta": "No",
+       "spiegazione": "L'autorizzazione della circolazione è del DE."
+      },
+      {
+       "testo": "Esegue la manutenzione dei veicoli",
+       "risposta": "No",
+       "spiegazione": "È compito dell'SRM e dell'officina."
+      }
+     ]
+    }
+   ],
+   "quiz": [
+    {
+     "domanda": "Un conducente segnala un near miss. Lo scopo della raccolta è…",
+     "corretta": "migliorare il sistema, non punire",
+     "errate": [
+      "avviare un procedimento disciplinare",
+      "archiviare la segnalazione"
+     ],
+     "spiegazione": "La raccolta dei near miss è non punitiva: serve a far emergere i rischi latenti.",
+     "fonte": "Slide 13"
+    },
+    {
+     "domanda": "Perché l'RSGS deve essere indipendente dalla produzione?",
+     "corretta": "Per valutare rischi e prestazioni senza pressioni di orari e servizio",
+     "errate": [
+      "Per non partecipare alle riunioni operative",
+      "Perché non conosce l'esercizio"
+     ],
+     "spiegazione": "Un controllo esposto alle pressioni della produzione rischia di non vedere, o di non dire, quello che vede.",
+     "fonte": "Slide 13"
+    }
+   ],
+   "sopralluogo": []
+  },
+  {
+   "n": 9,
+   "id": "sgc",
+   "sotto": "1.2",
+   "titolo": "Il Sistema di Gestione delle Competenze",
+   "slot": "P2",
+   "referente": "rsgc",
+   "tipo": "standard",
+   "grafica": "dedicata",
+   "dedicata": "M1-09",
+   "modello": "sequenza",
+   "notaPannello": "La patente non è un traguardo: è l'inizio di un percorso monitorato.",
+   "elementi": [
+    {
+     "titolo": "Selezione",
+     "testo": "Requisiti di base.",
+     "testo2": ""
+    },
+    {
+     "titolo": "Formazione iniziale",
+     "testo": "Apprendimento teorico e pratico.",
+     "testo2": ""
+    },
+    {
+     "titolo": "Certificazione",
+     "testo": "Esame e rilascio dell'abilitazione.",
+     "testo2": ""
+    },
+    {
+     "titolo": "Mantenimento",
+     "testo": "Formazione continua e corsi periodici.",
+     "testo2": ""
+    },
+    {
+     "titolo": "Monitoraggio",
+     "testo": "Verifica costante dell'idoneità fisica e psicologica.",
+     "testo2": ""
+    }
+   ],
+   "punti": [
+    "Ciclo di vita: selezione, formazione iniziale, certificazione (esame e abilitazione), mantenimento, monitoraggio dell'idoneità fisica e psicologica.",
+    "Responsabile SGC: programma la formazione, gestisce la validità delle abilitazioni, nomina le commissioni d'esame.",
+    "Istruttori ed esaminatori: definiscono il fabbisogno formativo, valutano il mantenimento delle competenze, intervengono dopo assenze prolungate, non conformità o inconvenienti."
+   ],
+   "nota": "",
+   "spiegazione": [
+    "La patente non è un traguardo: è l'<em>inizio</em> di un percorso monitorato. Selezione, formazione iniziale, certificazione, poi mantenimento con corsi periodici e monitoraggio costante dell'idoneità.",
+    "Io programmo la formazione, tengo sotto controllo la validità delle abilitazioni e nomino le commissioni d'esame. Istruttori ed esaminatori valutano le competenze sul campo."
+   ],
+   "labs": [
+    {
+     "tipo": "ordina",
+     "titolo": "Il ciclo di vita delle competenze",
+     "istruzioni": "Ricostruisci le cinque fasi nell'ordine giusto.",
+     "opzioni": [],
+     "voci": [
+      {
+       "testo": "Selezione · requisiti di base",
+       "risposta": 1,
+       "spiegazione": ""
+      },
+      {
+       "testo": "Formazione iniziale · teoria e pratica",
+       "risposta": 2,
+       "spiegazione": ""
+      },
+      {
+       "testo": "Certificazione · esame e abilitazione",
+       "risposta": 3,
+       "spiegazione": ""
+      },
+      {
+       "testo": "Mantenimento · formazione continua",
+       "risposta": 4,
+       "spiegazione": ""
+      },
+      {
+       "testo": "Monitoraggio · idoneità fisica e psicologica",
+       "risposta": 5,
+       "spiegazione": ""
+      }
+     ]
+    },
+    {
+     "tipo": "abbina",
+     "titolo": "Responsabile SGC o istruttori?",
+     "istruzioni": "Associa ogni compito a chi lo svolge.",
+     "opzioni": [
+      "Responsabile SGC",
+      "Istruttori ed esaminatori"
+     ],
+     "voci": [
+      {
+       "testo": "Programma le attività formative",
+       "risposta": "Responsabile SGC",
+       "spiegazione": ""
+      },
+      {
+       "testo": "Gestisce e monitora la validità delle abilitazioni",
+       "risposta": "Responsabile SGC",
+       "spiegazione": ""
+      },
+      {
+       "testo": "Nomina le commissioni d'esame",
+       "risposta": "Responsabile SGC",
+       "spiegazione": ""
+      },
+      {
+       "testo": "Definisce il fabbisogno formativo del personale da formare",
+       "risposta": "Istruttori ed esaminatori",
+       "spiegazione": ""
+      },
+      {
+       "testo": "Valuta requisiti professionali e mantenimento delle competenze",
+       "risposta": "Istruttori ed esaminatori",
+       "spiegazione": ""
+      },
+      {
+       "testo": "Interviene dopo assenze prolungate o inconvenienti di esercizio",
+       "risposta": "Istruttori ed esaminatori",
+       "spiegazione": ""
+      }
+     ]
+    }
+   ],
+   "quiz": [
+    {
+     "domanda": "Ottenuta l'abilitazione, il percorso…",
+     "corretta": "continua con mantenimento e monitoraggio",
+     "errate": [
+      "è concluso per sempre",
+      "ricomincia dalla selezione"
+     ],
+     "spiegazione": "Mantenimento e monitoraggio garantiscono che la competenza resti nel tempo.",
+     "fonte": "Slide 14-15"
+    },
+    {
+     "domanda": "Dopo un'assenza prolungata dal servizio, chi interviene?",
+     "corretta": "Istruttori ed esaminatori, valutando il mantenimento delle competenze",
+     "errate": [
+      "Nessuno: l'abilitazione resta valida",
+      "Il capostazione"
+     ],
+     "spiegazione": "È uno dei casi previsti: assenze prolungate, non conformità o inconvenienti di esercizio.",
+     "fonte": "Slide 14-15"
+    }
+   ],
+   "sopralluogo": []
+  },
+  {
+   "n": 10,
+   "id": "srm",
+   "sotto": "1.2",
+   "titolo": "Il Soggetto Responsabile della Manutenzione",
+   "slot": "P4",
+   "referente": "srm",
+   "tipo": "standard",
+   "grafica": "dedicata",
+   "dedicata": "M1-10",
+   "modello": "sequenza",
+   "notaPannello": "Nessun treno va in linea se non è stato dichiarato idoneo: dal piano di manutenzione all'officina, fino alla riammissione in servizio.",
+   "elementi": [
+    {
+     "titolo": "Gestione",
+     "testo": "Supervisione e coordinamento.",
+     "testo2": ""
+    },
+    {
+     "titolo": "Sviluppo",
+     "testo": "Creazione e aggiornamento dei Piani di manutenzione.",
+     "testo2": ""
+    },
+    {
+     "titolo": "Gestione flotta",
+     "testo": "Ritiro e riammissione in servizio dei veicoli.",
+     "testo2": ""
+    },
+    {
+     "titolo": "Esecuzione",
+     "testo": "L'officina e le attività fisiche sul mezzo.",
+     "testo2": ""
+    }
+   ],
+   "punti": [
+    "Assicura che il veicolo sia in condizioni sicure per la circolazione prima del suo utilizzo.",
+    "Quattro funzioni: gestione (supervisione e coordinamento), sviluppo (piani di manutenzione), gestione flotta (ritiro e riammissione in servizio), esecuzione (officina e attività sul mezzo)."
+   ],
+   "nota": "La slide definisce l'SRM «entità certificata»: verifica quale schema di certificazione o di riconoscimento si applica davvero al perimetro aziendale, prima di usare il termine in documenti ufficiali.",
+   "spiegazione": [
+    "Il treno che vedi arrivare è sicuro perché qualcuno lo ha <em>dichiarato idoneo</em> prima di mandarlo in linea. È il lavoro dell'SRM, in quattro funzioni.",
+    "La <em>gestione</em> coordina; lo <em>sviluppo</em> scrive e aggiorna i piani di manutenzione; la <em>gestione della flotta</em> ritira e riammette i veicoli; l'<em>esecuzione</em> è l'officina, le mani sul mezzo."
+   ],
+   "labs": [
+    {
+     "tipo": "abbina",
+     "titolo": "Quale funzione SRM?",
+     "istruzioni": "Associa ogni attività alla funzione dell'SRM.",
+     "opzioni": [
+      "Gestione",
+      "Sviluppo",
+      "Gestione flotta",
+      "Esecuzione"
+     ],
+     "voci": [
+      {
+       "testo": "Coordinare e supervisionare la manutenzione",
+       "risposta": "Gestione",
+       "spiegazione": ""
+      },
+      {
+       "testo": "Aggiornare il piano di manutenzione del rotabile",
+       "risposta": "Sviluppo",
+       "spiegazione": ""
+      },
+      {
+       "testo": "Ritirare dal servizio un treno con un difetto",
+       "risposta": "Gestione flotta",
+       "spiegazione": ""
+      },
+      {
+       "testo": "Sostituire le pastiglie dei freni in officina",
+       "risposta": "Esecuzione",
+       "spiegazione": ""
+      },
+      {
+       "testo": "Riammettere in servizio il treno riparato",
+       "risposta": "Gestione flotta",
+       "spiegazione": ""
+      }
+     ]
+    }
+   ],
+   "quiz": [
+    {
+     "domanda": "Un treno ha un difetto che ne compromette la sicurezza. Quale funzione lo ritira dal servizio?",
+     "corretta": "Gestione flotta",
+     "errate": [
+      "Sviluppo",
+      "Esecuzione"
+     ],
+     "spiegazione": "Ritiro e riammissione in servizio sono il cuore della gestione della flotta.",
+     "fonte": "Slide 16"
+    },
+    {
+     "domanda": "Lo scopo dell'SRM è…",
+     "corretta": "garantire che il veicolo sia sicuro prima del suo utilizzo",
+     "errate": [
+      "programmare i turni dei conducenti",
+      "autorizzare la circolazione"
+     ],
+     "spiegazione": "L'SRM risponde della sicurezza del veicolo; la circolazione la autorizza il DE.",
+     "fonte": "Slide 16"
+    }
+   ],
+   "sopralluogo": []
+  },
+  {
+   "n": 11,
+   "id": "infra",
+   "sotto": "1.2",
+   "titolo": "La manutenzione dell'infrastruttura",
+   "slot": "P5",
+   "referente": "mmi",
+   "tipo": "sopralluogo",
+   "grafica": "dedicata",
+   "dedicata": "M1-11",
+   "modello": "colonne",
+   "notaPannello": "Non esiste un solo responsabile: ogni specialità garantisce la sicurezza del proprio sottosistema.",
+   "elementi": [
+    {
+     "titolo": "Trazione elettrica / SSE",
+     "testo": "Linea di contatto, sottostazioni e alimentazione.",
+     "testo2": ""
+    },
+    {
+     "titolo": "Segnalamento (IS)",
+     "testo": "Distanziamento, segnali, apparati centrali.",
+     "testo2": ""
+    },
+    {
+     "titolo": "Armamento",
+     "testo": "Rotaie, scambi e sede ferroviaria.",
+     "testo2": ""
+    },
+    {
+     "titolo": "Opere civili",
+     "testo": "Gallerie, stazioni, viadotti.",
+     "testo2": ""
+    }
+   ],
+   "punti": [
+    "Non esiste un solo responsabile: l'infrastruttura è divisa in specialità.",
+    "Trazione elettrica e SSE: linea di contatto, sottostazioni, alimentazione.",
+    "Segnalamento (IS): distanziamento, segnali, apparati centrali.",
+    "Armamento: rotaie, scambi, sede. Opere civili: gallerie, stazioni, viadotti."
+   ],
+   "nota": "La slide promette un tracciato «privo di pericoli»: in un approccio risk-based l'obiettivo è un rischio residuo controllato e accettabile, non il rischio zero. Per la metropolitana, inoltre, la ripartizione reale segue l'organigramma per funzioni e non coincide con lo schema della slide (per esempio la linea di contatto è in carico a MMI, le SSE a ITR, segnalamento e impianti ausiliari a MMC, le opere civili a PMI): verificala sempre sull'organigramma vigente.",
+   "spiegazione": [
+    "L'infrastruttura è un puzzle di specialità: <em>trazione elettrica</em>, <em>segnalamento</em>, <em>armamento</em>, <em>opere civili</em>. Ognuna ha un responsabile che garantisce il proprio sottosistema.",
+    "Invece di spiegartelo, te lo faccio vedere. Oltre il cancello c'è il cantiere del binario 1 e poi la galleria: trova quattro elementi e dimmi a quale specialità appartengono."
+   ],
+   "labs": [],
+   "quiz": [
+    {
+     "domanda": "Segnali, sistemi di distanziamento e apparati centrali appartengono al…",
+     "corretta": "Segnalamento (IS)",
+     "errate": [
+      "Armamento",
+      "Opere civili"
+     ],
+     "spiegazione": "Il segnalamento garantisce il distanziamento dei treni: segnali, circuiti, apparati centrali.",
+     "fonte": "Slide 17"
+    },
+    {
+     "domanda": "In un approccio risk-based, «infrastruttura sicura» significa…",
+     "corretta": "rischi individuati e ridotti a un livello accettabile, con controlli nel tempo",
+     "errate": [
+      "assenza assoluta di qualsiasi pericolo",
+      "nessuna manutenzione necessaria"
+     ],
+     "spiegazione": "Il rischio zero non esiste: si identificano i pericoli, si riducono i rischi e si verificano le misure.",
+     "fonte": "Slide 17"
+    }
+   ],
+   "sopralluogo": [
+    {
+     "oggetto": "rotaie",
+     "etichetta": "Esamina le rotaie di scorta",
+     "titolo": "Rotaie di scorta in cantiere",
+     "descrizione": "Barre di rotaia da 12 m accatastate per la sostituzione di un tratto usurato. Accanto, gli attrezzi per scambi e traverse.",
+     "opzioni": [
+      "Armamento",
+      "Segnalamento (IS)",
+      "Trazione elettrica / SSE",
+      "Opere civili"
+     ],
+     "corretta": "Armamento"
+    },
+    {
+     "oggetto": "segnale",
+     "etichetta": "Esamina il segnale all'imbocco",
+     "titolo": "Segnale luminoso di galleria",
+     "descrizione": "Segnale luminoso a due aspetti con cassa di manovra. Comanda il distanziamento dei treni ed è collegato all'apparato centrale.",
+     "opzioni": [
+      "Armamento",
+      "Segnalamento (IS)",
+      "Trazione elettrica / SSE",
+      "Opere civili"
+     ],
+     "corretta": "Segnalamento (IS)"
+    },
+    {
+     "oggetto": "sse",
+     "etichetta": "Esamina la porta della sottostazione",
+     "titolo": "Sottostazione elettrica (SSE)",
+     "descrizione": "Porta di accesso alla sottostazione: 750 V in corrente continua per alimentare la linea di contatto. Accesso riservato al personale autorizzato.",
+     "opzioni": [
+      "Armamento",
+      "Segnalamento (IS)",
+      "Trazione elettrica / SSE",
+      "Opere civili"
+     ],
+     "corretta": "Trazione elettrica / SSE"
+    },
+    {
+     "oggetto": "fessurimetro",
+     "etichetta": "Esamina la piastrina sul piedritto",
+     "titolo": "Fessurimetro F-07",
+     "descrizione": "Piastrina di monitoraggio delle fessure nel rivestimento della galleria: si legge a ogni ispezione per verificare che le fessure non si allarghino.",
+     "opzioni": [
+      "Armamento",
+      "Segnalamento (IS)",
+      "Trazione elettrica / SSE",
+      "Opere civili"
+     ],
+     "corretta": "Opere civili"
+    }
+   ]
+  },
+  {
+   "n": 12,
+   "id": "uomo",
+   "sotto": "1.2",
+   "titolo": "Fattore umano e operatore al centro",
+   "slot": "P3",
+   "referente": "cond",
+   "tipo": "standard",
+   "grafica": "dedicata",
+   "dedicata": "M1-12",
+   "modello": "anelli",
+   "notaPannello": "Tutto il sistema esiste perché chi guida, chi viaggia e chi lavora in linea sia protetto.",
+   "elementi": [
+    {
+     "titolo": "Cornice SGS",
+     "testo": "RSGS",
+     "testo2": ""
+    },
+    {
+     "titolo": "Regole e circolazione",
+     "testo": "DE",
+     "testo2": ""
+    },
+    {
+     "titolo": "Infrastruttura sicura",
+     "testo": "Resp. Infrastruttura",
+     "testo2": ""
+    },
+    {
+     "titolo": "Veicolo sicuro",
+     "testo": "SRM",
+     "testo2": ""
+    },
+    {
+     "titolo": "Operatore",
+     "testo": "Competente, idoneo e consapevole (SGC)",
+     "testo2": ""
+    }
+   ],
+   "punti": [
+    "Limiti umani: il SGS riconosce e gestisce fatica, carico di lavoro, distrazioni.",
+    "Near miss: eventi pericolosi senza conseguenze. Segnalarli disinnesca i rischi latenti sotto la punta dell'iceberg.",
+    "Just Culture: si analizza il sistema; si tutela l'errore in buona fede, non la negligenza volontaria.",
+    "L'operatore al centro: cornice SGS (RSGS), regole e circolazione (DE), infrastruttura sicura (Resp. Infrastruttura), veicolo sicuro (SRM), operatore competente (SGC)."
+   ],
+   "nota": "Nella slide la cornice SGS è «monitorata dal RSGS tramite ANSFISA»: più correttamente l'RSGS monitora il SGS all'interno dell'azienda, mentre ANSFISA esercita la supervisione dall'esterno. E la «totale sicurezza» va letta come rischio residuo controllato; l'obiettivo riguarda passeggeri, lavoratori e terzi, non solo chi guida.",
+   "spiegazione": [
+    "Ieri, a fine turno, un passeggero è corso verso le porte mentre si chiudevano. L'ho visto in tempo, nessuna conseguenza. Un <em>near miss</em>. L'ho segnalato, anche se non era successo niente.",
+    "Sopra l'acqua ci sono gli incidenti; sotto, molto più grande, ci sono i quasi-incidenti e i rischi latenti. La <em>Just Culture</em> mi tutela se sbaglio in buona fede, così posso raccontarlo e il sistema impara."
+   ],
+   "labs": [
+    {
+     "tipo": "abbina",
+     "titolo": "Just Culture: buona fede o negligenza?",
+     "istruzioni": "Per ogni caso scegli come lo tratta la Just Culture.",
+     "opzioni": [
+      "Errore in buona fede: si tutela e si analizza il sistema",
+      "Negligenza volontaria: non è tutelata"
+     ],
+     "voci": [
+      {
+       "testo": "Interpreta male un'istruzione scritta in modo ambiguo",
+       "risposta": "Errore in buona fede: si tutela e si analizza il sistema",
+       "spiegazione": ""
+      },
+      {
+       "testo": "Salta di proposito un controllo obbligatorio per recuperare ritardo",
+       "risposta": "Negligenza volontaria: non è tutelata",
+       "spiegazione": ""
+      },
+      {
+       "testo": "Sbaglia a fine turno, dopo un carico di lavoro eccessivo",
+       "risposta": "Errore in buona fede: si tutela e si analizza il sistema",
+       "spiegazione": ""
+      },
+      {
+       "testo": "Disattiva deliberatamente un dispositivo di sicurezza senza autorizzazione",
+       "risposta": "Negligenza volontaria: non è tutelata",
+       "spiegazione": ""
+      },
+      {
+       "testo": "Segnala spontaneamente un proprio errore senza conseguenze",
+       "risposta": "Errore in buona fede: si tutela e si analizza il sistema",
+       "spiegazione": ""
+      }
+     ]
+    },
+    {
+     "tipo": "ordina",
+     "titolo": "Dall'esterno al centro",
+     "istruzioni": "Ordina gli anelli di protezione dal più esterno all'operatore.",
+     "opzioni": [],
+     "voci": [
+      {
+       "testo": "Cornice SGS · RSGS",
+       "risposta": 1,
+       "spiegazione": ""
+      },
+      {
+       "testo": "Regole e circolazione · DE",
+       "risposta": 2,
+       "spiegazione": ""
+      },
+      {
+       "testo": "Infrastruttura sicura · Resp. Infrastruttura",
+       "risposta": 3,
+       "spiegazione": ""
+      },
+      {
+       "testo": "Veicolo sicuro · SRM",
+       "risposta": 4,
+       "spiegazione": ""
+      },
+      {
+       "testo": "Operatore competente · SGC",
+       "risposta": 5,
+       "spiegazione": ""
+      }
+     ]
+    }
+   ],
+   "quiz": [
+    {
+     "domanda": "Che cos'è un near miss?",
+     "corretta": "Un evento pericoloso che non ha avuto conseguenze",
+     "errate": [
+      "Un incidente con feriti",
+      "Un guasto programmato"
+     ],
+     "spiegazione": "È il quasi-incidente: nessun danno, ma un segnale prezioso sui rischi latenti.",
+     "fonte": "Slide 18-19"
+    },
+    {
+     "domanda": "Chi rende l'operatore «competente, idoneo e consapevole»?",
+     "corretta": "Il Sistema di Gestione delle Competenze",
+     "errate": [
+      "ANSFISA direttamente",
+      "Il capostazione"
+     ],
+     "spiegazione": "È il centro degli anelli: selezione, formazione, certificazione, mantenimento e monitoraggio.",
+     "fonte": "Slide 18-19"
+    }
+   ],
+   "sopralluogo": []
+  }
+ ],
+ "esame": [
+  {
+   "tappa": 1,
+   "domanda": "Qual è la principale differenza tra l'impostazione del DPR 753/1980 e quella del SGS?",
+   "corretta": "Il SGS si basa sulla valutazione preventiva dei rischi, non solo su prescrizioni",
+   "errate": [
+    "Il SGS elimina tutte le regole",
+    "Il DPR 753/1980 era già basato sul rischio",
+    "Non c'è alcuna differenza"
+   ],
+   "spiegazione": "Dal modello prescrittivo si passa a quello risk-based: le regole restano, ma sono governate dai rischi.",
+   "fonte": "Slide 3"
+  },
+  {
+   "tappa": 1,
+   "domanda": "Il D.L. 109/2018, detto «Decreto Genova»…",
+   "corretta": "ha istituito ANSFISA",
+   "errate": [
+    "è il nuovo codice della strada",
+    "ha abrogato ogni norma precedente",
+    "riguarda solo i viadotti autostradali"
+   ],
+   "spiegazione": "È l'atto istitutivo dell'Agenzia Nazionale per la Sicurezza delle Ferrovie e delle Infrastrutture Stradali e Autostradali.",
+   "fonte": "Slide 3"
+  },
+  {
+   "tappa": 1,
+   "domanda": "Per esercire, l'Esercente deve possedere…",
+   "corretta": "un'Autorizzazione di Sicurezza (AdS)",
+   "errate": [
+    "solo un certificato di qualità",
+    "un parere del Comune",
+    "nessun titolo specifico"
+   ],
+   "spiegazione": "L'AdS è il titolo per operare; il suo requisito chiave è un SGS attuato ed efficace.",
+   "fonte": "Slide 3"
+  },
+  {
+   "tappa": 2,
+   "domanda": "Quale di questi NON è un compito di ANSFISA indicato nel corso?",
+   "corretta": "Condurre i treni in caso di sciopero",
+   "errate": [
+    "Rilasciare certificazioni e autorizzazioni",
+    "Supervisionare gli Esercenti",
+    "Emanare circolari, note e decreti"
+   ],
+   "spiegazione": "I compiti sono tre: certificazione/autorizzazione, supervisione, regolamentazione.",
+   "fonte": "Slide 4"
+  },
+  {
+   "tappa": 2,
+   "domanda": "La supervisione di ANSFISA verifica…",
+   "corretta": "il rispetto delle norme e la coerenza con gli obiettivi di sicurezza",
+   "errate": [
+    "solo la puntualità dei treni",
+    "i bilanci aziendali",
+    "la pulizia delle stazioni"
+   ],
+   "spiegazione": "Supervisione vuol dire verificare l'ottemperanza alle norme e la coerenza con gli obiettivi di sicurezza prefissati.",
+   "fonte": "Slide 4"
+  },
+  {
+   "tappa": 3,
+   "domanda": "Organizzazione, procedure e risorse sono…",
+   "corretta": "i tre elementi su cui si regge il SGS",
+   "errate": [
+    "le tre fasi del PDCA",
+    "i tre compiti di ANSFISA",
+    "i tre sottosistemi dell'infrastruttura"
+   ],
+   "spiegazione": "Sono le tre ruote dell'ingranaggio SGS.",
+   "fonte": "Slide 6"
+  },
+  {
+   "tappa": 3,
+   "domanda": "«Personale formato, mezzi sicuri e infrastrutture adeguate» descrive…",
+   "corretta": "le risorse",
+   "errate": [
+    "le procedure",
+    "l'organizzazione",
+    "la supervisione"
+   ],
+   "spiegazione": "Le risorse sono persone, mezzi e infrastrutture adeguati.",
+   "fonte": "Slide 6"
+  },
+  {
+   "tappa": 4,
+   "domanda": "Nell'approccio proattivo, dopo un evento il focus è…",
+   "corretta": "capire perché il sistema ha fallito",
+   "errate": [
+    "trovare il colpevole",
+    "chiudere la pratica in fretta",
+    "cambiare fornitore"
+   ],
+   "spiegazione": "La ricerca del colpevole è tipica dell'approccio reattivo; il SGS cerca le cause di sistema.",
+   "fonte": "Slide 7"
+  },
+  {
+   "tappa": 4,
+   "domanda": "«Interventi solo a guasto» è tipico dell'approccio…",
+   "corretta": "reattivo",
+   "errate": [
+    "proattivo",
+    "risk-based",
+    "di miglioramento continuo"
+   ],
+   "spiegazione": "Il SGS chiede manutenzione preventiva e costantemente monitorata.",
+   "fonte": "Slide 7"
+  },
+  {
+   "tappa": 5,
+   "domanda": "Nel ciclo PDCA, la valutazione dei rischi appartiene alla fase…",
+   "corretta": "Plan",
+   "errate": [
+    "Do",
+    "Check",
+    "Act"
+   ],
+   "spiegazione": "Pianificare significa analizzare in anticipo gli scenari di pericolo.",
+   "fonte": "Slide 8"
+  },
+  {
+   "tappa": 5,
+   "domanda": "Correzione delle anomalie e aggiornamento del SGS sono la fase…",
+   "corretta": "Act",
+   "errate": [
+    "Plan",
+    "Do",
+    "Check"
+   ],
+   "spiegazione": "Act è il miglioramento, che riapre il ciclo.",
+   "fonte": "Slide 8"
+  },
+  {
+   "tappa": 5,
+   "domanda": "Monitoraggio e audit sul campo sono la fase…",
+   "corretta": "Check",
+   "errate": [
+    "Do",
+    "Act",
+    "Plan"
+   ],
+   "spiegazione": "Check verifica l'efficacia delle misure sul campo.",
+   "fonte": "Slide 8"
+  },
+  {
+   "tappa": 6,
+   "domanda": "Il principio che lega DE, RSGS, Manutenzione e RSGC è…",
+   "corretta": "responsabilità indipendenti e separate per il controllo reciproco",
+   "errate": [
+    "un'unica firma per tutte le decisioni",
+    "la rotazione annuale dei ruoli",
+    "la subordinazione di tutti all'RSGS"
+   ],
+   "spiegazione": "Collaborano per un unico obiettivo, ma mantengono responsabilità separate.",
+   "fonte": "Slide 9-11"
+  },
+  {
+   "tappa": 6,
+   "domanda": "Nell'organigramma per funzioni, la sigla MMV indica…",
+   "corretta": "Manutenzione Veicoli e Officina",
+   "errate": [
+    "Movimento Metro Veloce",
+    "Manutenzione Infrastrutture",
+    "Monitoraggio Volontario"
+   ],
+   "spiegazione": "MMV è la manutenzione dei veicoli e l'officina della Metro.",
+   "fonte": "Slide 9-11"
+  },
+  {
+   "tappa": 6,
+   "domanda": "La responsabilità ultima del sistema è…",
+   "corretta": "dell'Esercente",
+   "errate": [
+    "di ANSFISA",
+    "del singolo conducente",
+    "del fornitore dei treni"
+   ],
+   "spiegazione": "Il vertice dello schema dei pilastri è l'Esercente, con la responsabilità ultima.",
+   "fonte": "Slide 9-11"
+  },
+  {
+   "tappa": 7,
+   "domanda": "Secondo il corso, il ruolo di DE è incompatibile con quello di…",
+   "corretta": "RSGS",
+   "errate": [
+    "conducente",
+    "istruttore",
+    "capostazione"
+   ],
+   "spiegazione": "Chi governa l'esercizio non può controllarne anche la sicurezza.",
+   "fonte": "Slide 12"
+  },
+  {
+   "tappa": 7,
+   "domanda": "Chi autorizza la circolazione e le operazioni?",
+   "corretta": "Il Direttore di Esercizio",
+   "errate": [
+    "L'RSGS",
+    "Il Responsabile SGC",
+    "L'SRM"
+   ],
+   "spiegazione": "È la prima responsabilità del DE.",
+   "fonte": "Slide 12"
+  },
+  {
+   "tappa": 8,
+   "domanda": "L'RSGS deve essere…",
+   "corretta": "indipendente dalle pressioni della produzione e della circolazione",
+   "errate": [
+    "il responsabile della produzione",
+    "il capo dei conducenti",
+    "un funzionario di ANSFISA"
+   ],
+   "spiegazione": "L'indipendenza è la condizione per un controllo credibile.",
+   "fonte": "Slide 13"
+  },
+  {
+   "tappa": 8,
+   "domanda": "Chi gestisce la valutazione dei rischi e conduce gli audit?",
+   "corretta": "L'RSGS",
+   "errate": [
+    "Il DE",
+    "L'SRM",
+    "Il fornitore"
+   ],
+   "spiegazione": "Sono responsabilità chiave del Responsabile del SGS.",
+   "fonte": "Slide 13"
+  },
+  {
+   "tappa": 9,
+   "domanda": "L'ordine corretto del ciclo di vita delle competenze è…",
+   "corretta": "selezione, formazione iniziale, certificazione, mantenimento, monitoraggio",
+   "errate": [
+    "certificazione, selezione, monitoraggio, formazione",
+    "formazione, selezione, esame, fine",
+    "monitoraggio, selezione, certificazione, formazione"
+   ],
+   "spiegazione": "È il «lifecycle journey» della slide: dalla selezione al monitoraggio costante.",
+   "fonte": "Slide 14-15"
+  },
+  {
+   "tappa": 9,
+   "domanda": "Chi nomina le commissioni d'esame?",
+   "corretta": "Il Responsabile SGC",
+   "errate": [
+    "Il DE",
+    "L'RSGS",
+    "ANSFISA"
+   ],
+   "spiegazione": "È uno dei tre compiti del Responsabile SGC indicati nel corso.",
+   "fonte": "Slide 14-15"
+  },
+  {
+   "tappa": 9,
+   "domanda": "La verifica costante dell'idoneità fisica e psicologica è la fase di…",
+   "corretta": "monitoraggio",
+   "errate": [
+    "selezione",
+    "formazione iniziale",
+    "certificazione"
+   ],
+   "spiegazione": "Il monitoraggio accompagna tutta la vita professionale.",
+   "fonte": "Slide 14-15"
+  },
+  {
+   "tappa": 10,
+   "domanda": "La funzione SRM che crea e aggiorna i Piani di manutenzione è…",
+   "corretta": "lo sviluppo",
+   "errate": [
+    "la gestione flotta",
+    "l'esecuzione",
+    "la gestione"
+   ],
+   "spiegazione": "Sviluppo: creazione e aggiornamento dei piani.",
+   "fonte": "Slide 16"
+  },
+  {
+   "tappa": 10,
+   "domanda": "Ritiro e riammissione in servizio dei veicoli spettano alla funzione…",
+   "corretta": "gestione flotta",
+   "errate": [
+    "sviluppo",
+    "esecuzione",
+    "gestione"
+   ],
+   "spiegazione": "La gestione della flotta decide quali veicoli escono e rientrano.",
+   "fonte": "Slide 16"
+  },
+  {
+   "tappa": 11,
+   "domanda": "Rotaie, scambi e sede ferroviaria sono il sottosistema…",
+   "corretta": "armamento",
+   "errate": [
+    "segnalamento",
+    "opere civili",
+    "trazione elettrica"
+   ],
+   "spiegazione": "L'armamento è la via di corsa.",
+   "fonte": "Slide 17"
+  },
+  {
+   "tappa": 11,
+   "domanda": "Linea di contatto e sottostazioni sono il sottosistema…",
+   "corretta": "trazione elettrica / SSE",
+   "errate": [
+    "armamento",
+    "segnalamento",
+    "opere civili"
+   ],
+   "spiegazione": "Alimentano i treni: è la trazione elettrica.",
+   "fonte": "Slide 17"
+  },
+  {
+   "tappa": 11,
+   "domanda": "Gallerie, stazioni e viadotti rientrano nelle…",
+   "corretta": "opere civili",
+   "errate": [
+    "attività di armamento",
+    "funzioni di trazione elettrica",
+    "funzioni di segnalamento"
+   ],
+   "spiegazione": "Sono le strutture che ospitano la linea.",
+   "fonte": "Slide 17"
+  },
+  {
+   "tappa": 12,
+   "domanda": "La Just Culture…",
+   "corretta": "tutela l'errore in buona fede e non tollera la negligenza volontaria",
+   "errate": [
+    "punisce ogni errore",
+    "non punisce mai nulla",
+    "riguarda solo i dirigenti"
+   ],
+   "spiegazione": "Distingue l'errore onesto, da analizzare, dalla violazione consapevole.",
+   "fonte": "Slide 18-19"
+  },
+  {
+   "tappa": 12,
+   "domanda": "Perché è importante segnalare i near miss?",
+   "corretta": "Per individuare i rischi latenti prima che diventino incidenti",
+   "errate": [
+    "Per trovare un colpevole",
+    "Per migliorare le statistiche",
+    "Non è importante"
+   ],
+   "spiegazione": "Sono la parte sommersa dell'iceberg: vederli permette di intervenire prima.",
+   "fonte": "Slide 18-19"
+  },
+  {
+   "tappa": 12,
+   "domanda": "Fatica, carico di lavoro e distrazioni sono…",
+   "corretta": "limiti umani che il SGS riconosce e gestisce",
+   "errate": [
+    "colpe individuali da sanzionare",
+    "temi estranei alla sicurezza",
+    "problemi solo dei passeggeri"
+   ],
+   "spiegazione": "Il fattore umano si gestisce con organizzazione, procedure e risorse adeguate.",
+   "fonte": "Slide 18-19"
+  },
+  {
+   "tappa": 12,
+   "domanda": "Nel modello «operatore al centro», il veicolo sicuro è garantito…",
+   "corretta": "dall'SRM",
+   "errate": [
+    "dal DE",
+    "dall'RSGS",
+    "da ANSFISA"
+   ],
+   "spiegazione": "L'anello «veicolo sicuro» è dell'SRM.",
+   "fonte": "Slide 18-19"
+  },
+  {
+   "tappa": 12,
+   "domanda": "Chi controlla il SGS, e come?",
+   "corretta": "L'RSGS lo monitora all'interno, ANSFISA lo supervisiona dall'esterno",
+   "errate": [
+    "ANSFISA gestisce direttamente il SGS dell'azienda",
+    "L'RSGS è un dipendente di ANSFISA",
+    "Nessuno, una volta ottenuta l'AdS"
+   ],
+   "spiegazione": "Due livelli distinti: controllo interno dell'Esercente e supervisione esterna dell'Agenzia.",
+   "fonte": "Slide 18-19"
+  }
+ ],
+ "sigle": [
+  {
+   "sigla": "AdS",
+   "significato": "Autorizzazione di Sicurezza: titolo con cui l'Esercente è autorizzato a esercire."
+  },
+  {
+   "sigla": "ANSFISA",
+   "significato": "Agenzia Nazionale per la Sicurezza delle Ferrovie e delle Infrastrutture Stradali e Autostradali."
+  },
+  {
+   "sigla": "SGS",
+   "significato": "Sistema di Gestione della Sicurezza."
+  },
+  {
+   "sigla": "SGC",
+   "significato": "Sistema di Gestione delle Competenze."
+  },
+  {
+   "sigla": "DE",
+   "significato": "Direttore di Esercizio."
+  },
+  {
+   "sigla": "RSGS",
+   "significato": "Responsabile del Sistema di Gestione della Sicurezza."
+  },
+  {
+   "sigla": "RSGC",
+   "significato": "Responsabile del Sistema di Gestione delle Competenze."
+  },
+  {
+   "sigla": "SRM",
+   "significato": "Soggetto Responsabile della Manutenzione (veicoli)."
+  },
+  {
+   "sigla": "PDCA",
+   "significato": "Plan, Do, Check, Act: ciclo di miglioramento continuo."
+  },
+  {
+   "sigla": "Near miss",
+   "significato": "Quasi-incidente: evento pericoloso senza conseguenze."
+  },
+  {
+   "sigla": "Just Culture",
+   "significato": "Cultura giusta: tutela l'errore in buona fede, non la negligenza volontaria."
+  },
+  {
+   "sigla": "IS",
+   "significato": "Impianti di segnalamento."
+  },
+  {
+   "sigla": "SSE",
+   "significato": "Sottostazione elettrica."
+  },
+  {
+   "sigla": "TGV",
+   "significato": "Trasporti a guida vincolata: perimetro del SGS (metro, cremagliera, filovia in definizione)."
+  },
+  {
+   "sigla": "FER",
+   "significato": "Servizio su Ferro."
+  },
+  {
+   "sigla": "SGA",
+   "significato": "Funzione Sistema di Gestione della Sicurezza."
+  },
+  {
+   "sigla": "SGM",
+   "significato": "Funzione Sistema di Gestione delle Competenze."
+  },
+  {
+   "sigla": "MET",
+   "significato": "Esercizio e Manutenzione Metro."
+  },
+  {
+   "sigla": "DCT",
+   "significato": "Esercizio MET (sigla dell'organigramma per funzioni)."
+  },
+  {
+   "sigla": "MMI",
+   "significato": "Manutenzione Infrastrutture Metro."
+  },
+  {
+   "sigla": "MMC",
+   "significato": "Manutenzione Segnalamento e Impianti Ausiliari."
+  },
+  {
+   "sigla": "MMV",
+   "significato": "Manutenzione Veicoli e Officina."
+  },
+  {
+   "sigla": "TEM",
+   "significato": "Ufficio Tecnico."
+  },
+  {
+   "sigla": "IMS",
+   "significato": "Impianti Verticali."
+  },
+  {
+   "sigla": "FGC",
+   "significato": "Ferrovia Genova Casella: fuori dal perimetro SGS TGV del corso."
+  }
+ ]
+}
