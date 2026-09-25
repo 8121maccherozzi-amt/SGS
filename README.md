@@ -18,3 +18,10 @@ Progetti relativi al SGS
 - `pack_to_xlsx.py`: rigenera il foglio Excel da un pacchetto JSON (`python3 pack_to_xlsx.py pacchetto.json uscita.xlsx`).
 
 Nel gioco: schermata iniziale › **Carica modulo** › file `.xlsx` o `.json`. Il gioco controlla il file e, se trova errori, li elenca con foglio e riga senza caricarlo. Il modulo caricato resta attivo nel browser finché non si torna al Modulo 1 predefinito.
+
+### SGS Learning: grafica, audio e marchio
+
+- **Qualità grafica**: in Impostazioni il valore predefinito è *Automatica*. Con schede video integrate (Intel UHD/Iris, AMD Radeon Graphics) parte da *Media*; se durante il gioco la fluidità resta sotto i 24 fps scende da sola a *Bassa*.
+- **Audio**: il sottofondo di stazione suona solo all'arrivo e alla partenza dei treni.
+- **Genova e AMT**: manifesti illustrati disegnati dal gioco (Lanterna, Porto Antico, Boccadasse, De Ferrari, Zecca–Righi, Principe–Granarolo), mappa della linea M, biglietteria, annunci «AMT informa». Non contengono immagini o loghi scaricati da internet.
+- **Logo aziendale**: Impostazioni › *Logo aziendale* › *Carica…* (PNG, JPG o SVG). Il logo sostituisce la scritta «AMT» su titolo, treni, tesserini, manifesti e mappe; resta solo nel browser di chi lo carica. Usare il file fornito dalla Comunicazione aziendale.
